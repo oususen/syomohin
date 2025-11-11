@@ -5,14 +5,43 @@ from __future__ import annotations
 
 import csv
 from io import TextIOWrapper
+from uuid import uuid4
 
 from flask import Blueprint, jsonify, request
+from werkzeug.utils import secure_filename
 
-from config import CONSUMABLE_INSERT_SQL, CSV_REQUIRED_FIELDS
+from config import (
+    CONSUMABLE_INSERT_SQL,
+    CSV_REQUIRED_FIELDS,
+    IMAGES_FOLDER,
+    ALLOWED_IMAGE_EXTENSIONS,
+)
 from database_manager import get_db_manager
 from utils.csv_utils import resolve_csv_field, normalize_csv_row, parse_int, parse_float, resolve_supplier_id
 
 consumables_bp = Blueprint("consumables", __name__)
+
+
+def _build_image_url(image_path: str | None) -> str | None:
+    if not image_path:
+        return None
+    path_str = str(image_path).strip()
+    if not path_str:
+        return None
+    if path_str.startswith(("http://", "https://")):
+        return path_str
+    normalized = path_str.lstrip("/")
+    if normalized.startswith("uploads/"):
+        normalized = normalized[len("uploads/") :]
+    return f"/uploads/{normalized}"
+
+
+def _is_allowed_image(filename: str) -> bool:
+    return (
+        bool(filename)
+        and "." in filename
+        and filename.rsplit(".", 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
+    )
 
 
 @consumables_bp.route("/api/consumables/import-csv", methods=["POST"])
@@ -132,11 +161,53 @@ def import_consumables_csv():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@consumables_bp.route("/api/consumables/<int:consumable_id>", methods=["GET"])
+def get_consumable_detail(consumable_id: int):
+    """�w�肳�ꂽ消耗品の詳細を取得"""
+    try:
+        db = get_db_manager()
+        query = """
+            SELECT
+                id,
+                code,
+                order_code,
+                name,
+                category,
+                unit,
+                stock_quantity,
+                safety_stock,
+                unit_price,
+                order_unit,
+                supplier_id,
+                storage_location,
+                image_path,
+                note,
+                order_status,
+                shortage_status
+            FROM consumables
+            WHERE id = :id
+        """
+        df = db.execute_query(query, {"id": consumable_id})
+        if df.empty:
+            return jsonify({"success": False, "error": "�消耗品����܂���"}), 404
+
+        data = df.iloc[0].to_dict()
+        data["image_url"] = _build_image_url(data.get("image_path"))
+        return jsonify({"success": True, "data": data})
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
 @consumables_bp.route("/api/consumables", methods=["POST"])
 def create_consumable():
     """消耗品を新規登録するAPI"""
     try:
-        data = request.get_json()
+        # FormDataまたはJSONからデータを取得
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form.to_dict()
+
         db = get_db_manager()
 
         code = data.get("code")
@@ -152,6 +223,18 @@ def create_consumable():
         if not existing.empty:
             return jsonify({"success": False, "error": "このコードは既に登録されています"}), 400
 
+        # 画像ファイルの処理
+        image_path = ""
+        if "image" in request.files:
+            file = request.files["image"]
+            if file and file.filename != "" and _is_allowed_image(file.filename):
+                extension = file.filename.rsplit(".", 1)[1].lower()
+                filename = f"{uuid4().hex}.{extension}"
+                safe_filename = secure_filename(filename)
+                save_path = IMAGES_FOLDER / safe_filename
+                file.save(str(save_path))
+                image_path = f"images/{safe_filename}"
+
         db.execute_update(
             CONSUMABLE_INSERT_SQL,
             {
@@ -160,13 +243,13 @@ def create_consumable():
                 "name": name,
                 "category": data.get("category", ""),
                 "unit": data.get("unit", "個"),
-                "stock_quantity": data.get("stock_quantity", 0),
-                "safety_stock": data.get("safety_stock", 0),
-                "unit_price": data.get("unit_price", 0),
-                "order_unit": data.get("order_unit", 1),
-                "supplier_id": data.get("supplier_id"),
+                "stock_quantity": int(data.get("stock_quantity", 0)),
+                "safety_stock": int(data.get("safety_stock", 0)),
+                "unit_price": float(data.get("unit_price", 0)),
+                "order_unit": int(data.get("order_unit", 1)),
+                "supplier_id": int(data["supplier_id"]) if data.get("supplier_id") else None,
                 "storage_location": data.get("storage_location", ""),
-                "image_path": data.get("image_path", ""),
+                "image_path": image_path,
                 "note": data.get("note", ""),
                 "order_status": "未発注",
                 "shortage_status": "在庫あり",
@@ -183,7 +266,12 @@ def create_consumable():
 def update_consumable(consumable_id):
     """消耗品情報を更新するAPI"""
     try:
-        data = request.get_json()
+        # FormDataまたはJSONからデータを取得
+        if request.is_json:
+            data = request.get_json()
+        else:
+            data = request.form.to_dict()
+
         db = get_db_manager()
 
         existing = db.execute_query(
@@ -207,22 +295,34 @@ def update_consumable(consumable_id):
             params["unit"] = data["unit"]
         if "safety_stock" in data:
             update_fields.append("safety_stock = :safety_stock")
-            params["safety_stock"] = data["safety_stock"]
+            params["safety_stock"] = int(data["safety_stock"])
         if "unit_price" in data:
             update_fields.append("unit_price = :unit_price")
-            params["unit_price"] = data["unit_price"]
+            params["unit_price"] = float(data["unit_price"])
         if "order_unit" in data:
             update_fields.append("order_unit = :order_unit")
-            params["order_unit"] = data["order_unit"]
+            params["order_unit"] = int(data["order_unit"])
         if "supplier_id" in data:
             update_fields.append("supplier_id = :supplier_id")
-            params["supplier_id"] = data["supplier_id"]
+            params["supplier_id"] = int(data["supplier_id"]) if data["supplier_id"] else None
         if "storage_location" in data:
             update_fields.append("storage_location = :storage_location")
             params["storage_location"] = data["storage_location"]
         if "note" in data:
             update_fields.append("note = :note")
             params["note"] = data["note"]
+
+        # 画像ファイルの処理
+        if "image" in request.files:
+            file = request.files["image"]
+            if file and file.filename != "" and _is_allowed_image(file.filename):
+                extension = file.filename.rsplit(".", 1)[1].lower()
+                filename = f"{uuid4().hex}.{extension}"
+                safe_filename = secure_filename(filename)
+                save_path = IMAGES_FOLDER / safe_filename
+                file.save(str(save_path))
+                update_fields.append("image_path = :image_path")
+                params["image_path"] = f"images/{safe_filename}"
 
         if not update_fields:
             return jsonify({"success": False, "error": "更新する項目がありません"}), 400
@@ -258,3 +358,30 @@ def delete_consumable(consumable_id):
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@consumables_bp.route("/api/uploads/images", methods=["POST"])
+def upload_consumable_image():
+    """�消耗品画像アップロードAPI"""
+    try:
+        if "image" not in request.files:
+            return jsonify({"success": False, "error": "画像ファイルが見つかりません"}), 400
+
+        file = request.files["image"]
+        if not file or file.filename == "":
+            return jsonify({"success": False, "error": "画像ファイルを選択してください"}), 400
+
+        if not _is_allowed_image(file.filename):
+            return jsonify({"success": False, "error": "対応していない画像形式です"}), 400
+
+        extension = file.filename.rsplit(".", 1)[1].lower()
+        filename = f"{uuid4().hex}.{extension}"
+        safe_filename = secure_filename(filename)
+        save_path = IMAGES_FOLDER / safe_filename
+        save_path.parent.mkdir(parents=True, exist_ok=True)
+        file.save(save_path)
+
+        relative_path = f"images/{safe_filename}"
+        return jsonify({"success": True, "path": relative_path, "url": _build_image_url(relative_path)})
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500

@@ -2,6 +2,11 @@
 let cameraStream = null;
 let filterOptions = { order_status: [], shortage_status: [] };
 let currentPage = 'inventory';
+let currentRegisterSubtab = 'create';
+let registerPageEventsBound = false;
+let editGalleryCache = [];
+let editGalleryLoaded = false;
+let currentEditItemId = null;
 let currentQrTarget = null; // 現在QRコードを入力しようとしているフィールド
 
 // ページ読み込み時の初期化
@@ -216,10 +221,47 @@ async function loadInventory() {
 }
 
 // 在庫一覧を表示
+function pickField(item, keys) {
+    for (const key of keys) {
+        if (item && Object.prototype.hasOwnProperty.call(item, key) && item[key] !== null && item[key] !== undefined) {
+            return item[key];
+        }
+    }
+    return "";
+}
+
+function escapeAttr(value) {
+    if (value === null || value === undefined) {
+        return "";
+    }
+    return String(value).replace(/"/g, '&quot;');
+}
+
+function getStatusClass(value, type) {
+    if (!value) return "status-neutral";
+    const text = String(value);
+    if (type === "shortage") {
+        if (text.includes("欠") || text.includes("要") || text.includes("不足")) {
+            return "status-alert";
+        }
+        return "status-safe";
+    }
+    if (type === "order") {
+        if (text.includes("済") || text.includes("完")) {
+            return "status-success";
+        }
+        if (text.includes("依頼") || text.includes("待") || text.includes("承認")) {
+            return "status-warning";
+        }
+        return "status-info";
+    }
+    return "status-info";
+}
+
 function renderInventory(items) {
     const container = document.getElementById('inventoryList');
 
-    if (items.length === 0) {
+    if (!items || items.length === 0) {
         container.innerHTML = `
             <div class="empty-state">
                 <p>条件に合致する消耗品が見つかりません。</p>
@@ -230,39 +272,94 @@ function renderInventory(items) {
     }
 
     container.innerHTML = items.map(item => {
-        const stock = parseInt(item['在庫数']);
-        const safety = parseInt(item['安全在庫']);
-        const isStockSufficient = stock >= safety;
+        const code = pickField(item, ['コード', 'コーチE', 'code']);
+        const orderCode = pickField(item, ['発注コード', '発注コーチE', 'order_code']);
+        const name = pickField(item, ['品名', 'name']);
+        const category = pickField(item, ['カテゴリ', 'category']);
+        const unit = pickField(item, ['単位', 'unit']) || '個';
+        const stock = parseInt(pickField(item, ['在庫数', 'stock_quantity'])) || 0;
+        const safety = parseInt(pickField(item, ['安全在庫', 'safety_stock'])) || 0;
+        const supplier = pickField(item, ['購入先', 'supplier_name']);
+        const shortageStatus = pickField(item, ['欠品状態', 'shortage_status']) || '不明';
+        const orderStatus = pickField(item, ['注文状態', 'order_status']) || '不明';
+        const shortageClass = getStatusClass(shortageStatus, 'shortage');
+        const orderClass = getStatusClass(orderStatus, 'order');
+        const imagePath = pickField(item, ['画像URL', 'image_path']);
+        const imageUrl = buildImageUrl(imagePath);
+        const safeCodeAttr = escapeAttr(code);
+        const safeNameAttr = escapeAttr(name);
+        const safeUnitAttr = escapeAttr(unit);
+        const safeSupplierAttr = escapeAttr(supplier);
 
         return `
             <div class="inventory-card">
-                <div class="card-content">
-                    <img
-                        src="${item['画像URL'] || 'https://placehold.co/120x80?text=IMG'}"
-                        alt="${item['品名']}"
-                        class="card-image"
-                    >
-                    <div class="card-details">
-                        <div class="card-row">
-                            <strong>コード:</strong> ${item['コード']} / <strong>発注コード:</strong> ${item['発注コード']}
+                <div class="card-main">
+                    <div class="card-image-wrapper">
+                        <img
+                            src="${imageUrl}"
+                            alt="${name}"
+                            class="card-image-large"
+                            loading="lazy"
+                        >
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title-row">
+                            <div class="item-name">${name || '-'}</div>
+                            <div class="item-code">コード: ${code || '-'}</div>
                         </div>
-                        <div class="card-row">
-                            <strong>品名:</strong> ${item['品名']} / <strong>カテゴリ:</strong> ${item['カテゴリ']}
+                        <div class="card-meta-row">
+                            <span>発注コード: ${orderCode || '-'}</span>
+                            <span>カテゴリ: ${category || '-'}</span>
                         </div>
-                        <div class="card-row">
-                            <strong>在庫数:</strong> ${stock} (安全在庫 ${safety}) / <strong>単位:</strong> ${item['単位']}
+                        <div class="card-meta-row">
+                            <span>在庫数: <strong>${stock}</strong> ${unit}</span>
+                            <span>安全在庫: ${safety} ${unit}</span>
                         </div>
-                        <div class="card-row">
-                            <strong>購入先:</strong> ${item['購入先']}
+                        <div class="card-meta-row">
+                            <span>購入先: ${supplier || '-'}</span>
                         </div>
-                        <div class="card-badges">
-                            <span class="badge ${isStockSufficient ? 'badge-green' : 'badge-red'}">
-                                ${isStockSufficient ? '✅ 在庫あり' : '⚠️ 要補充'}
-                            </span>
-                            <span class="badge badge-blue">
-                                🗂 ${item['注文状態']}
-                            </span>
+                        <div class="status-row">
+                            <span class="status-pill ${shortageClass}">欠品状態: ${shortageStatus}</span>
+                            <span class="status-pill ${orderClass}">注文状態: ${orderStatus}</span>
                         </div>
+                    </div>
+                    <div class="card-actions">
+                        <button
+                            class="action-btn action-outbound"
+                            data-code="${safeCodeAttr}"
+                            data-name="${safeNameAttr}"
+                            data-stock="${stock}"
+                            data-safety="${safety}"
+                            data-unit="${safeUnitAttr}"
+                            data-supplier="${safeSupplierAttr}"
+                            onclick="handleInventoryAction('outbound', this)"
+                        >
+                            📤 出庫
+                        </button>
+                        <button
+                            class="action-btn action-inbound"
+                            data-code="${safeCodeAttr}"
+                            data-name="${safeNameAttr}"
+                            data-stock="${stock}"
+                            data-safety="${safety}"
+                            data-unit="${safeUnitAttr}"
+                            data-supplier="${safeSupplierAttr}"
+                            onclick="handleInventoryAction('inbound', this)"
+                        >
+                            📥 入庫
+                        </button>
+                        <button
+                            class="action-btn action-order"
+                            data-code="${safeCodeAttr}"
+                            data-name="${safeNameAttr}"
+                            data-stock="${stock}"
+                            data-safety="${safety}"
+                            data-unit="${safeUnitAttr}"
+                            data-supplier="${safeSupplierAttr}"
+                            onclick="handleInventoryAction('order', this)"
+                        >
+                            📝 注文依頼
+                        </button>
                     </div>
                 </div>
             </div>
@@ -270,7 +367,58 @@ function renderInventory(items) {
     }).join('');
 }
 
-// 表示件数を更新
+function handleInventoryAction(action, button) {
+    const payload = {
+        code: button.dataset.code || "",
+        name: button.dataset.name || "",
+        stock: parseInt(button.dataset.stock || "0", 10),
+        safety: parseInt(button.dataset.safety || "0", 10),
+        unit: button.dataset.unit || "",
+        supplier: button.dataset.supplier || "",
+    };
+
+    const configMap = {
+        outbound: { page: 'outbound', qr: 'outboundQrCode', container: 'outboundItemInfo', details: 'outboundItemDetails', focus: 'outboundQuantity' },
+        inbound: { page: 'inbound', qr: 'inboundQrCode', container: 'inboundItemInfo', details: 'inboundItemDetails', focus: 'inboundQuantity' },
+        order: { page: 'order', qr: 'orderQrCode', container: 'orderItemInfo', details: 'orderItemDetails', focus: 'orderQuantity' },
+    };
+
+    const config = configMap[action];
+    if (!config) return;
+
+    switchPage(action === 'order' ? 'order' : action);
+    if (config.qr) {
+        const qrInput = document.getElementById(config.qr);
+        if (qrInput) qrInput.value = payload.code;
+    }
+
+    showQuickInfo(config.container, config.details, payload);
+
+    const focusTarget = document.getElementById(config.focus);
+    if (focusTarget) {
+        focusTarget.focus();
+        focusTarget.select();
+    }
+}
+
+function showQuickInfo(containerId, detailsId, payload) {
+    const container = document.getElementById(containerId);
+    const details = document.getElementById(detailsId);
+    if (!container || !details) return;
+
+    details.innerHTML = `
+        <div class="quick-item-card">
+            <div><strong>品名:</strong> ${payload.name || '-'}</div>
+            <div><strong>コード:</strong> ${payload.code || '-'}</div>
+            <div><strong>在庫数:</strong> ${payload.stock} ${payload.unit}</div>
+            <div><strong>安全在庫:</strong> ${payload.safety} ${payload.unit}</div>
+            <div><strong>購入先:</strong> ${payload.supplier || '-'}</div>
+        </div>
+    `;
+    container.style.display = 'block';
+    container.dataset.itemCode = payload.code || '';
+}
+
 function updateCountInfo(filtered, total) {
     document.getElementById('countInfo').textContent = `表示件数: ${filtered} / ${total}`;
 }
@@ -837,28 +985,39 @@ async function submitRegisterForm() {
         return;
     }
 
-    const data = {
-        code: code,
-        order_code: document.getElementById('registerOrderCode').value.trim(),
-        name: name,
-        category: document.getElementById('registerCategory').value.trim(),
-        unit: document.getElementById('registerUnit').value.trim() || '個',
-        stock_quantity: parseInt(document.getElementById('registerStockQty').value) || 0,
-        safety_stock: parseInt(document.getElementById('registerSafetyStock').value) || 0,
-        unit_price: parseFloat(document.getElementById('registerUnitPrice').value) || 0,
-        order_unit: parseInt(document.getElementById('registerOrderUnit').value) || 1,
-        supplier_id: document.getElementById('registerSupplier').value ? parseInt(document.getElementById('registerSupplier').value) : null,
-        storage_location: document.getElementById('registerStorageLocation').value.trim(),
-        note: document.getElementById('registerNote').value.trim()
-    };
+    // 画像ファイルの取得
+    const imageInput = document.getElementById('registerImage');
+    const imageFile = imageInput?.files[0];
+
+    // FormDataを使用して画像を含めて送信
+    const formData = new FormData();
+    formData.append('code', code);
+    formData.append('order_code', document.getElementById('registerOrderCode').value.trim());
+    formData.append('name', name);
+    formData.append('category', document.getElementById('registerCategory').value.trim());
+    formData.append('unit', document.getElementById('registerUnit').value.trim() || '個');
+    formData.append('stock_quantity', parseInt(document.getElementById('registerStockQty').value) || 0);
+    formData.append('safety_stock', parseInt(document.getElementById('registerSafetyStock').value) || 0);
+    formData.append('unit_price', parseFloat(document.getElementById('registerUnitPrice').value) || 0);
+    formData.append('order_unit', parseInt(document.getElementById('registerOrderUnit').value) || 1);
+
+    const supplierId = document.getElementById('registerSupplier').value;
+    if (supplierId) {
+        formData.append('supplier_id', parseInt(supplierId));
+    }
+
+    formData.append('storage_location', document.getElementById('registerStorageLocation').value.trim());
+    formData.append('note', document.getElementById('registerNote').value.trim());
+
+    // 画像ファイルがあれば追加
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
 
     try {
         const response = await fetch('/api/consumables', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(data)
+            body: formData // FormDataを送信（Content-Typeヘッダーは自動設定される）
         });
 
         const result = await response.json();
@@ -878,6 +1037,14 @@ async function submitRegisterForm() {
             document.getElementById('registerSupplier').value = '';
             document.getElementById('registerStorageLocation').value = '';
             document.getElementById('registerNote').value = '';
+            // 画像をクリア
+            if (imageInput) {
+                imageInput.value = '';
+            }
+            const imagePreviewBox = document.getElementById('registerImagePreviewBox');
+            if (imagePreviewBox) {
+                imagePreviewBox.hidden = true;
+            }
             // 在庫一覧に戻る
             setTimeout(() => {
                 switchPage('inventory');
@@ -948,31 +1115,355 @@ async function importConsumablesCsv() {
 
 
 function initRegisterPage() {
-    // 購入先を読み込み
+    if (!registerPageEventsBound) {
+        setupRegisterSubtabs();
+
+        const registerSubmitBtn = document.getElementById('registerSubmitBtn');
+        if (registerSubmitBtn) {
+            registerSubmitBtn.addEventListener('click', submitRegisterForm);
+        }
+
+        const csvImportBtn = document.getElementById('csvImportBtn');
+        if (csvImportBtn) {
+            csvImportBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                importConsumablesCsv();
+            });
+        }
+
+        const csvTemplateDownloadBtn = document.getElementById('csvTemplateDownloadBtn');
+        if (csvTemplateDownloadBtn) {
+            csvTemplateDownloadBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                downloadCsvTemplate();
+            });
+        }
+
+        const editLoadBtn = document.getElementById('editLoadBtn');
+        if (editLoadBtn) {
+            editLoadBtn.addEventListener('click', (event) => {
+                event.preventDefault();
+                editGalleryLoaded = false;
+                loadEditGallery();
+            });
+        }
+
+        const editSearchInput = document.getElementById('editSearchCode');
+        if (editSearchInput) {
+            editSearchInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    editGalleryLoaded = false;
+                    loadEditGallery();
+                }
+            });
+        }
+
+        const editSubmitBtn = document.getElementById('editSubmitBtn');
+        if (editSubmitBtn) {
+            editSubmitBtn.addEventListener('click', submitEditForm);
+        }
+
+        // 画像アップロード機能のイベントリスナー
+        setupImageUpload('register');
+        setupImageUpload('edit');
+
+        registerPageEventsBound = true;
+    }
+
     loadSuppliers();
 
-    // 登録ボタンのイベントリスナー
-    const registerSubmitBtn = document.getElementById('registerSubmitBtn');
-    if (registerSubmitBtn) {
-        registerSubmitBtn.addEventListener('click', submitRegisterForm);
-    }
-
-    const csvImportBtn = document.getElementById('csvImportBtn');
-    if (csvImportBtn) {
-        csvImportBtn.addEventListener('click', (event) => {
-            event.preventDefault();
-            importConsumablesCsv();
-        });
-    }
-
-    const csvTemplateDownloadBtn = document.getElementById('csvTemplateDownloadBtn');
-    if (csvTemplateDownloadBtn) {
-        csvTemplateDownloadBtn.addEventListener('click', (event) => {
-            event.preventDefault();
-            downloadCsvTemplate();
-        });
+    if (currentRegisterSubtab === 'edit') {
+        ensureEditGalleryLoaded();
     }
 }
+
+function setupRegisterSubtabs() {
+    const container = document.getElementById('registerSubtabs');
+    if (!container) return;
+    container.querySelectorAll('.subtab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            switchRegisterSubtab(btn.dataset.detailTab);
+        });
+    });
+    switchRegisterSubtab(currentRegisterSubtab);
+}
+
+function switchRegisterSubtab(target) {
+    if (!target) return;
+    currentRegisterSubtab = target;
+
+    document.querySelectorAll('#registerSubtabs .subtab-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.detailTab === target);
+    });
+
+    document.querySelectorAll('[data-detail-tab-content]').forEach((section) => {
+        const isTarget = section.dataset.detailTabContent === target;
+        section.hidden = !isTarget;
+    });
+
+    if (target === 'edit') {
+        ensureEditGalleryLoaded();
+    }
+}
+
+function ensureEditGalleryLoaded(force = false) {
+    if (force) {
+        editGalleryLoaded = false;
+    }
+    if (editGalleryLoaded) {
+        return;
+    }
+    loadEditGallery();
+}
+
+async function loadEditGallery() {
+    const container = document.getElementById('editGalleryContainer');
+    if (!container) return;
+
+    container.innerHTML = '<p class="loading">消耗品ギャラリーを読み込み中...</p>';
+
+    try {
+        const params = new URLSearchParams();
+        const searchValue = document.getElementById('editSearchCode')?.value.trim();
+        if (searchValue) {
+            params.append('search_text', searchValue);
+        }
+        const query = params.toString();
+        const response = await fetch(`/api/inventory${query ? `?${query}` : ''}`);
+        const data = await response.json();
+
+        if (data.success) {
+            editGalleryCache = data.data || [];
+            editGalleryLoaded = true;
+            renderEditGallery(editGalleryCache);
+        } else {
+            container.innerHTML = `<p class="error">${data.error || 'ギャラリーの読み込みに失敗しました'}</p>`;
+        }
+    } catch (error) {
+        console.error('edit gallery load error:', error);
+        container.innerHTML = '<p class="error">ギャラリーの読み込みに失敗しました</p>';
+    }
+}
+
+function renderEditGallery(items) {
+    const container = document.getElementById('editGalleryContainer');
+    if (!container) return;
+
+    if (!items || items.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>対象の消耗品が見つかりません。</p>
+                <p>検索条件を変更して再度お試しください。</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = items.map((item, index) => {
+        const code = pickField(item, ['コード', 'code']);
+        const name = pickField(item, ['品名', 'name']);
+        const category = pickField(item, ['カテゴリ', 'category']);
+        const unit = pickField(item, ['単位', 'unit']) || '';
+        const stock = parseInt(pickField(item, ['在庫数', 'stock_quantity']), 10) || 0;
+        const safety = parseInt(pickField(item, ['安全在庫', 'safety_stock']), 10) || 0;
+        const supplier = pickField(item, ['購入先', 'supplier_name']) || '-';
+        const shortageStatus = pickField(item, ['欠品状態', 'shortage_status']) || '不明';
+        const orderStatus = pickField(item, ['注文状態', 'order_status']) || '不明';
+        const imagePath = pickField(item, ['画像URL', 'image_path']);
+        const imageUrl = buildImageUrl(imagePath);
+        const shortageClass = getStatusClass(shortageStatus, 'shortage');
+        const orderClass = getStatusClass(orderStatus, 'order');
+
+        return `
+            <div class="inventory-card compact">
+                <div class="card-main compact">
+                    <div class="card-image-wrapper">
+                        <img src="${imageUrl}" alt="${name || code || 'item'}" class="card-image-large" loading="lazy">
+                    </div>
+                    <div class="card-info">
+                        <div class="card-title-row">
+                            <div class="item-name">${name || '-'}</div>
+                            <div class="item-code">コード: ${code || '-'}</div>
+                        </div>
+                        <div class="card-meta-row">
+                            <span>カテゴリ: ${category || '-'}</span>
+                            <span>購入先: ${supplier}</span>
+                        </div>
+                        <div class="card-meta-row">
+                            <span>在庫: ${stock} ${unit}</span>
+                            <span>安全在庫: ${safety} ${unit}</span>
+                        </div>
+                        <div class="status-row">
+                            <span class="status-pill ${shortageClass}">欠品: ${shortageStatus}</span>
+                            <span class="status-pill ${orderClass}">注文: ${orderStatus}</span>
+                        </div>
+                        <button class="btn btn-primary edit-gallery-select" type="button" onclick="handleEditCardSelect(${index})">
+                            このアイテムを編集
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function handleEditCardSelect(index) {
+    const item = editGalleryCache[index];
+    if (!item) return;
+    updateEditPreview(item);
+    await loadEditDetail(item);
+}
+
+function updateEditPreview(item) {
+    const preview = document.getElementById('editItemPreview');
+    if (!preview) return;
+
+    const code = pickField(item, ['コード', 'code']);
+    const name = pickField(item, ['品名', 'name']);
+    const stock = pickField(item, ['在庫数', 'stock_quantity']);
+    const safety = pickField(item, ['安全在庫', 'safety_stock']);
+    const supplier = pickField(item, ['購入先', 'supplier_name']);
+
+    preview.innerHTML = `
+        <div><strong>品名:</strong> ${name || '-'}</div>
+        <div><strong>コード:</strong> ${code || '-'}</div>
+        <div><strong>在庫:</strong> ${stock || '-'} / 安全在庫 ${safety || '-'}</div>
+        <div><strong>購入先:</strong> ${supplier || '-'}</div>
+    `;
+    preview.hidden = false;
+}
+
+function getItemId(item) {
+    return item?.id ?? item?.ID ?? item?.Id ?? null;
+}
+
+async function loadEditDetail(summary) {
+    const consumableId = getItemId(summary);
+    if (!consumableId) {
+        showError('選択したアイテムのIDを取得できませんでした');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/consumables/${consumableId}`);
+        const data = await response.json();
+        if (data.success) {
+            populateEditForm(data.data);
+        } else {
+            showError(data.error || '詳細情報の取得に失敗しました');
+        }
+    } catch (error) {
+        console.error('loadEditDetail error:', error);
+        showError('詳細情報の取得に失敗しました');
+    }
+}
+
+function populateEditForm(detail) {
+    if (!detail) return;
+    currentEditItemId = detail.id;
+
+    const fields = document.getElementById('editFormFields');
+    if (!fields) return;
+
+    const setValue = (id, value = '') => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.value = value ?? '';
+        }
+    };
+
+    setValue('editName', detail.name);
+    setValue('editCategory', detail.category);
+    setValue('editUnit', detail.unit);
+    setValue('editSafetyStock', detail.safety_stock);
+    setValue('editUnitPrice', detail.unit_price);
+    setValue('editOrderUnit', detail.order_unit);
+    setValue('editStorageLocation', detail.storage_location);
+    setValue('editNote', detail.note);
+
+    const supplierSelect = document.getElementById('editSupplier');
+    if (supplierSelect) {
+        supplierSelect.value = detail.supplier_id || '';
+    }
+
+    // 既存の画像を表示
+    const imagePath = detail.image_path;
+    if (imagePath) {
+        setImagePreview('edit', imagePath);
+        const hiddenPath = document.getElementById('editImagePath');
+        if (hiddenPath) {
+            hiddenPath.value = imagePath;
+        }
+    } else {
+        // 画像がない場合はプレビューを非表示
+        const imagePreviewBox = document.getElementById('editImagePreviewBox');
+        if (imagePreviewBox) {
+            imagePreviewBox.hidden = true;
+        }
+        // 入力フィールドもクリア
+        const imageInput = document.getElementById('editImage');
+        if (imageInput) {
+            imageInput.value = '';
+        }
+    }
+
+    fields.hidden = false;
+}
+
+async function submitEditForm() {
+    if (!currentEditItemId) {
+        showError('編集するアイテムを選択してください');
+        return;
+    }
+
+    // 画像ファイルの取得
+    const imageInput = document.getElementById('editImage');
+    const imageFile = imageInput?.files[0];
+
+    // FormDataを使用して画像を含めて送信
+    const formData = new FormData();
+    formData.append('name', document.getElementById('editName').value.trim());
+    formData.append('category', document.getElementById('editCategory').value.trim());
+    formData.append('unit', document.getElementById('editUnit').value.trim());
+    formData.append('safety_stock', parseInt(document.getElementById('editSafetyStock').value, 10) || 0);
+    formData.append('unit_price', parseFloat(document.getElementById('editUnitPrice').value) || 0);
+    formData.append('order_unit', parseInt(document.getElementById('editOrderUnit').value, 10) || 1);
+
+    const supplierId = document.getElementById('editSupplier').value;
+    if (supplierId) {
+        formData.append('supplier_id', parseInt(supplierId, 10));
+    }
+
+    formData.append('storage_location', document.getElementById('editStorageLocation').value.trim());
+    formData.append('note', document.getElementById('editNote').value.trim());
+
+    // 画像ファイルがあれば追加
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
+
+    try {
+        const response = await fetch(`/api/consumables/${currentEditItemId}`, {
+            method: 'PUT',
+            body: formData // FormDataを送信
+        });
+
+        const result = await response.json();
+        if (result.success) {
+            showSuccess('内容を更新しました');
+            editGalleryLoaded = false;
+            await loadEditGallery();
+            await loadInventory();
+        } else {
+            showError(result.error || '更新に失敗しました');
+        }
+    } catch (error) {
+        console.error('submitEditForm error:', error);
+        showError('更新に失敗しました');
+    }
+}
+
 
 // ========================================
 // 発注管理機能
@@ -1357,4 +1848,97 @@ async function dispatchOrdersWithEmail() {
         console.error('発注エラー:', error);
         showError('発注に失敗しました');
     }
+}
+
+// ========================================
+// 画像アップロード機能
+// ========================================
+
+function setupImageUpload(prefix) {
+    const imageInput = document.getElementById(`${prefix}Image`);
+    const imagePreviewBox = document.getElementById(`${prefix}ImagePreviewBox`);
+    const imageClearBtn = document.getElementById(`${prefix}ImageClearBtn`);
+
+    if (!imageInput || !imagePreviewBox) return;
+
+    // 画像選択時のプレビュー
+    imageInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            // ファイルサイズチェック (5MB)
+            if (file.size > 5 * 1024 * 1024) {
+                showError('画像ファイルは5MB以下にしてください');
+                imageInput.value = '';
+                return;
+            }
+
+            // プレビュー表示
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = imagePreviewBox.querySelector('img');
+                if (img) {
+                    img.src = event.target.result;
+                    imagePreviewBox.hidden = false;
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+    // 画像クリアボタン
+    if (imageClearBtn) {
+        imageClearBtn.addEventListener('click', () => {
+            imageInput.value = '';
+            imagePreviewBox.hidden = true;
+            const img = imagePreviewBox.querySelector('img');
+            if (img) {
+                img.src = '';
+            }
+            const hiddenPath = document.getElementById(`${prefix}ImagePath`);
+            if (hiddenPath) {
+                hiddenPath.value = '';
+            }
+        });
+    }
+}
+
+function setImagePreview(prefix, imageUrl) {
+    const imagePreviewBox = document.getElementById(`${prefix}ImagePreviewBox`);
+    const img = imagePreviewBox?.querySelector('img');
+
+    if (imageUrl && img) {
+        img.src = buildImageUrl(imageUrl);
+        imagePreviewBox.hidden = false;
+    } else if (imagePreviewBox) {
+        imagePreviewBox.hidden = true;
+    }
+}
+
+function buildImageUrl(imagePath) {
+    if (!imagePath) {
+        return 'https://placehold.co/200x150?text=No+Image';
+    }
+
+    const pathStr = String(imagePath).trim();
+    if (!pathStr) {
+        return 'https://placehold.co/200x150?text=No+Image';
+    }
+
+    // すでに完全なURLの場合はそのまま返す
+    if (pathStr.startsWith('http://') || pathStr.startsWith('https://')) {
+        return pathStr;
+    }
+
+    // /uploads/で始まる場合はそのまま返す
+    if (pathStr.startsWith('/uploads/')) {
+        return pathStr;
+    }
+
+    // uploads/で始まる場合は先頭に/を追加
+    if (pathStr.startsWith('uploads/')) {
+        return '/' + pathStr;
+    }
+
+    // それ以外の場合は /uploads/ を追加
+    return '/uploads/' + pathStr;
 }

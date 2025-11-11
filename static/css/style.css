@@ -89,6 +89,104 @@ body {
     color: #666;
 }
 
+.subtab-group {
+    display: flex;
+    gap: 12px;
+    margin: 20px;
+    padding: 6px;
+    background: white;
+    border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+}
+
+.subtab-btn {
+    flex: 1;
+    border: none;
+    background: transparent;
+    padding: 12px 16px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #607d8b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.subtab-btn.active {
+    color: #fff;
+    background: linear-gradient(135deg, #00a58c, #00897b);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+}
+
+.detail-tab-content {
+    margin: 0 20px 30px;
+}
+
+.detail-tab-content[hidden] {
+    display: none !important;
+}
+
+.section-title {
+    font-size: 18px;
+    font-weight: 700;
+    margin-bottom: 18px;
+    color: #37474f;
+}
+
+.image-upload-group small {
+    display: block;
+    margin-top: 6px;
+    color: #607d8b;
+    font-size: 12px;
+}
+
+.image-preview {
+    margin-top: 10px;
+    border: 1px dashed #b0bec5;
+    border-radius: 10px;
+    padding: 8px;
+    background: #fafafa;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.image-preview[hidden] {
+    display: none !important;
+}
+
+.image-preview img {
+    max-width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 8px;
+}
+
+.image-upload-actions {
+    margin-top: 8px;
+}
+
+.image-upload-actions .btn {
+    width: 100%;
+}
+
+.primary-action {
+    width: 100%;
+    padding: 15px;
+    font-size: 16px;
+    margin-top: 8px;
+}
+
+.input-with-button {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.input-with-button .input-field {
+    flex: 1;
+}
+
 /* フォームコンテナ */
 .form-container {
     background: white;
@@ -317,22 +415,82 @@ body {
     box-shadow: 0 4px 16px rgba(0,0,0,0.12);
 }
 
-.card-content {
-    display: flex;
+.inventory-list.compact {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
     gap: 16px;
 }
 
-.card-image {
-    flex-shrink: 0;
-    width: 120px;
-    height: 80px;
-    border-radius: 8px;
-    object-fit: cover;
-    background: #f0f0f0;
+.inventory-list.compact .inventory-card {
+    margin: 0;
 }
 
-.card-details {
-    flex: 1;
+.inventory-card.compact .card-main {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+}
+
+.inventory-card.compact .card-actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.inventory-card.compact .card-info {
+    gap: 4px;
+}
+
+.edit-gallery-select {
+    margin-top: 10px;
+    width: 100%;
+    padding: 10px;
+    font-size: 14px;
+}
+
+/* 在庫カードのレイアウトを強化 */
+.card-main {
+    display: flex;
+    gap: 20px;
+    align-items: stretch;
+    flex-wrap: wrap;
+}
+
+.card-image-wrapper {
+    flex: 0 0 180px;
+}
+
+.card-image-large {
+    width: 100%;
+    height: 140px;
+    border-radius: 12px;
+    object-fit: cover;
+    background: #f0f0f0;
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
+}
+
+.card-info {
+    flex: 1 1 320px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.card-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    font-size: 18px;
+    font-weight: 600;
+    color: #222;
+}
+
+.card-meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    font-size: 13px;
+    color: #555;
 }
 
 .card-row {
@@ -346,30 +504,99 @@ body {
     font-weight: 600;
 }
 
-.card-badges {
+.status-row {
     display: flex;
     gap: 8px;
-    margin-top: 12px;
+    flex-wrap: wrap;
+    margin-top: 4px;
 }
 
-.badge {
+.status-pill {
+    display: inline-flex;
+    align-items: center;
     padding: 6px 12px;
-    border-radius: 20px;
+    border-radius: 999px;
     font-size: 12px;
     font-weight: 600;
+}
+
+.status-safe {
+    background: #e8f5e9;
+    color: #1b5e20;
+}
+
+.status-alert {
+    background: #ffebee;
+    color: #b71c1c;
+}
+
+.status-success {
+    background: #e3f2fd;
+    color: #0d47a1;
+}
+
+.status-warning {
+    background: #fff8e1;
+    color: #ff6f00;
+}
+
+.status-info {
+    background: #ede7f6;
+    color: #4527a0;
+}
+
+.status-neutral {
+    background: #eceff1;
+    color: #455a64;
+}
+
+.card-actions {
+    flex: 0 0 150px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    justify-content: center;
+}
+
+.action-btn {
+    border: none;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 14px;
+    font-weight: 600;
     color: white;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.badge-green {
-    background-color: #4caf50;
+.action-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
 
-.badge-red {
-    background-color: #f44336;
+.action-outbound {
+    background: #ef5350;
 }
 
-.badge-blue {
-    background-color: #2196f3;
+.action-inbound {
+    background: #66bb6a;
+}
+
+.action-order {
+    background: #42a5f5;
+}
+
+.quick-item-card {
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 12px;
+    font-size: 13px;
+    line-height: 1.6;
 }
 
 /* カメラモーダル */
