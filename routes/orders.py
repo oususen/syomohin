@@ -105,6 +105,7 @@ def get_orders():
         status = request.args.get("status", "")
         supplier_id = request.args.get("supplier_id", "")
         requester = request.args.get("requester", "")
+        search_text = request.args.get("search_text", "")
         date_from = request.args.get("date_from", "")
         date_to = request.args.get("date_to", "")
         sort_by = request.args.get("sort_by", "requested_date")
@@ -148,6 +149,10 @@ def get_orders():
         if requester:
             query += " AND o.requester_name LIKE :requester"
             params["requester"] = f"%{requester}%"
+
+        if search_text:
+            query += " AND (o.code LIKE :search_text OR o.name LIKE :search_text)"
+            params["search_text"] = f"%{search_text}%"
 
         if date_from:
             query += " AND DATE(o.requested_date) >= :date_from"

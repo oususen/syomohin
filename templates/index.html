@@ -21,6 +21,7 @@
         <button class="nav-btn" data-page="inbound">📥 入庫</button>
         <button class="nav-btn" data-page="order">📝 注文依頼</button>
         <button class="nav-btn" data-page="order-list">📋 発注状態</button>
+        <button class="nav-btn" data-page="dispatch">📮 発注</button>
     </nav>
 
     <!-- 在庫一覧ページ -->
@@ -342,6 +343,157 @@
         <div id="autoOrdersList" class="list-container" style="display: none;">
             <h3>自動依頼分（発注済み）</h3>
             <div id="autoOrdersContent"></div>
+        </div>
+    </div>
+
+    <!-- 発注ページ -->
+    <div id="dispatchPage" class="page-content">
+        <div class="page-header">
+            <h2>📮 発注（PDF作成・メール送信）</h2>
+            <p>注文書PDFを作成し、購入先にメール送信します</p>
+        </div>
+
+        <!-- ステップ1: 注文選択 -->
+        <div class="form-container">
+            <h3>ステップ1: 発注する注文を選択</h3>
+
+            <!-- フィルター -->
+            <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
+                <h4 style="margin-top: 0;">🔍 フィルター</h4>
+
+                <div class="filter-row" style="margin-bottom: 12px;">
+                    <div class="filter-group">
+                        <label for="dispatchQrCode">QRコード検索</label>
+                        <input type="text" id="dispatchQrCode" class="input-field"
+                               placeholder="QRコードを入力">
+                        <button id="dispatchScanBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
+                            📷 QRスキャン
+                        </button>
+                    </div>
+                    <div class="filter-group">
+                        <label for="dispatchSearchText">品名検索</label>
+                        <input type="text" id="dispatchSearchText" class="input-field"
+                               placeholder="品名を検索">
+                    </div>
+                </div>
+
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label for="dispatchSupplier">購入先</label>
+                        <select id="dispatchSupplier" class="input-field">
+                            <option value="">すべて</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="dispatchOrderStatus">注文状態</label>
+                        <select id="dispatchOrderStatus" class="input-field">
+                            <option value="">すべて</option>
+                            <option value="依頼中">依頼中</option>
+                            <option value="発注済">発注済</option>
+                            <option value="完了">完了</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-group" style="margin-bottom: 16px;">
+                <button class="btn btn-primary" onclick="loadDispatchOrders()">
+                    🔄 注文を読み込み
+                </button>
+                <button class="btn btn-secondary" onclick="selectAllOrders()">
+                    ☑️ すべて選択
+                </button>
+                <button class="btn btn-secondary" onclick="clearAllOrders()">
+                    ☐ すべて解除
+                </button>
+            </div>
+
+            <div id="dispatchOrdersList" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 12px;">
+                <p class="loading">注文を読み込むボタンをクリックしてください</p>
+            </div>
+
+            <div id="selectedOrdersSummary" style="margin-top: 16px; padding: 12px; background: #f5f5f5; border-radius: 8px; display: none;">
+                <strong>選択中:</strong> <span id="selectedCount">0</span>件
+                <span style="margin-left: 20px;"><strong>合計金額:</strong> ¥<span id="selectedTotal">0</span></span>
+            </div>
+        </div>
+
+        <!-- ステップ2: PDF設定 -->
+        <div class="form-container" style="margin-top: 20px;">
+            <h3>ステップ2: 注文書PDF設定</h3>
+
+            <div class="filter-group">
+                <label for="dispatchOrderNumber">注文書番号（任意）</label>
+                <input type="text" id="dispatchOrderNumber" class="input-field"
+                       placeholder="空欄の場合は自動採番されます">
+            </div>
+
+            <div class="filter-group">
+                <label for="dispatchNotes">備考</label>
+                <textarea id="dispatchNotes" class="input-field" rows="3"
+                          placeholder="注文書に表示する備考（任意）"></textarea>
+            </div>
+
+            <button class="btn btn-secondary" onclick="generatePDFOnly()" style="width: 100%;">
+                📄 PDFのみ生成（ダウンロード）
+            </button>
+        </div>
+
+        <!-- ステップ3: メール設定 -->
+        <div class="form-container" style="margin-top: 20px;">
+            <h3>ステップ3: メール送信設定</h3>
+
+            <div class="filter-group">
+                <label for="dispatchEmailTo">宛先（To） *</label>
+                <input type="email" id="dispatchEmailTo" class="input-field"
+                       placeholder="supplier@example.com" required>
+                <small style="color: #666;">複数指定する場合はカンマ区切り</small>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="dispatchEmailCc">CC（任意）</label>
+                    <input type="text" id="dispatchEmailCc" class="input-field"
+                           placeholder="cc@example.com">
+                </div>
+                <div class="filter-group">
+                    <label for="dispatchEmailBcc">BCC（任意）</label>
+                    <input type="text" id="dispatchEmailBcc" class="input-field"
+                           placeholder="bcc@example.com">
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label for="dispatchEmailSubject">件名 *</label>
+                <input type="text" id="dispatchEmailSubject" class="input-field"
+                       placeholder="【注文書送付】〇〇商事御中" required>
+            </div>
+
+            <div class="filter-group">
+                <label for="dispatchEmailBody">本文 *</label>
+                <textarea id="dispatchEmailBody" class="input-field" rows="6"
+                          placeholder="お世話になっております。&#10;&#10;注文書をお送りいたします。&#10;ご確認のほどよろしくお願いいたします。" required></textarea>
+            </div>
+
+            <div class="filter-group">
+                <label>
+                    <input type="checkbox" id="dispatchSavePdf" checked>
+                    PDFをサーバーに保存する
+                </label>
+            </div>
+
+            <button class="btn btn-primary" onclick="dispatchOrdersWithEmail()"
+                    style="width: 100%; font-size: 18px; padding: 16px;">
+                📮 注文書を作成してメール送信
+            </button>
+        </div>
+
+        <!-- 結果表示エリア -->
+        <div id="dispatchResult" style="margin-top: 20px; display: none;">
+            <div class="form-container">
+                <h3>✅ 発注完了</h3>
+                <div id="dispatchResultContent"></div>
+            </div>
         </div>
     </div>
 
