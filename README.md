@@ -295,3 +295,19 @@ lsof -i :8501                 # Mac/Linux
 
 **Version**: 1.0.0
 **Last Updated**: 2025-11-11
+## CSVインポートで新規登録
+
+- `? 新規登録` ページ最下部の「CSVインポート」から `static/samples/consumables_template.csv` をベースにしたファイルを選択し「CSVを取り込む」を押すと `/api/consumables/import-csv` に送信されます。
+- 必須列は `code` と `name`。任意で `category`, `unit`, `stock_quantity`, `safety_stock`, `unit_price`, `order_unit`, `supplier_name`(または `supplier_id`), `storage_location`, `note`, `order_status`, `shortage_status` を指定できます。
+- 既存コードは自動的にスキップされ、登録/スキップ/エラー件数がトーストに表示されます。詳細はブラウザのコンソールログにも出力されます。
+- サンプルCSVは `https://<ホスト>:8501/download/consumables-template` からダウンロードできます。UTF-8 BOM 付きで配信しているため Excel でも文字化けせず開けます。ネットワークや証明書の都合で取得できない場合でも、ボタンを押すとクライアント側で同じ内容を UTF-8 BOM 付きで自動生成して保存します。
+
+### API での利用
+
+```
+POST /api/consumables/import-csv
+Content-Type: multipart/form-data
+file=<CSV ファイル>
+```
+
+`200 OK` 時は `summary.inserted` / `summary.skipped` / `summary.errors` を含むJSONが返ります。`4xx` の場合は `error` に原因が入ります。

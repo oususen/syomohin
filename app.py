@@ -2,9 +2,10 @@ from __future__ import annotations
 
 import base64
 from datetime import datetime
-from io import BytesIO
+from io import BytesIO, TextIOWrapper
 from pathlib import Path
 
+import csv
 import cv2
 import numpy as np
 from database_manager import get_db_manager
@@ -29,6 +30,8 @@ IMAGES_FOLDER = UPLOAD_FOLDER / "images"
 PDF_FOLDER = UPLOAD_FOLDER / "pdfs"
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 ALLOWED_PDF_EXTENSIONS = {"pdf"}
+SAMPLES_FOLDER = Path(__file__).parent / "static" / "samples"
+CSV_TEMPLATE_NAME = "consumables_template.csv"
 
 # ディレクトリ作成
 IMAGES_FOLDER.mkdir(parents=True, exist_ok=True)
@@ -36,6 +39,137 @@ PDF_FOLDER.mkdir(parents=True, exist_ok=True)
 
 app.config["UPLOAD_FOLDER"] = str(UPLOAD_FOLDER)
 app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16MB max
+
+
+CONSUMABLE_INSERT_SQL = """
+    INSERT INTO consumables (
+        code, order_code, name, category, unit,
+        stock_quantity, safety_stock, unit_price, order_unit,
+        supplier_id, storage_location, image_path, note,
+        order_status, shortage_status
+    ) VALUES (
+        :code, :order_code, :name, :category, :unit,
+        :stock_quantity, :safety_stock, :unit_price, :order_unit,
+        :supplier_id, :storage_location, :image_path, :note,
+        :order_status, :shortage_status
+    )
+"""
+
+CSV_FIELD_ALIASES = {
+    "code": "code",
+    "コード": "code",
+    "品目コード": "code",
+    "order_code": "order_code",
+    "注文コード": "order_code",
+    "name": "name",
+    "品名": "name",
+    "category": "category",
+    "カテゴリ": "category",
+    "unit": "unit",
+    "単位": "unit",
+    "stock_quantity": "stock_quantity",
+    "在庫数": "stock_quantity",
+    "safety_stock": "safety_stock",
+    "安全在庫": "safety_stock",
+    "unit_price": "unit_price",
+    "単価": "unit_price",
+    "order_unit": "order_unit",
+    "発注単位": "order_unit",
+    "supplier_id": "supplier_id",
+    "supplier": "supplier_name",
+    "supplier_name": "supplier_name",
+    "仕入先": "supplier_name",
+    "storage_location": "storage_location",
+    "保管場所": "storage_location",
+    "note": "note",
+    "備考": "note",
+    "image_path": "image_path",
+    "画像パス": "image_path",
+    "order_status": "order_status",
+    "shortage_status": "shortage_status",
+}
+
+CSV_REQUIRED_FIELDS = {"code", "name"}
+
+
+def resolve_csv_field(field_name: str | None) -> str | None:
+    if not field_name:
+        return None
+
+    key = field_name.strip()
+    lower_key = key.lower()
+    return CSV_FIELD_ALIASES.get(key) or CSV_FIELD_ALIASES.get(lower_key) or lower_key
+
+
+def normalize_csv_row(row: dict[str, str | None]) -> dict[str, str | None]:
+    normalized: dict[str, str | None] = {}
+    for raw_key, raw_value in row.items():
+        target_key = resolve_csv_field(raw_key)
+        if not target_key:
+            continue
+        if isinstance(raw_value, str):
+            normalized[target_key] = raw_value.strip()
+        else:
+            normalized[target_key] = raw_value
+    return normalized
+
+
+def parse_int(value: str | int | float | None, default: int = 0) -> int:
+    if value is None:
+        return default
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    cleaned = value.strip().replace(",", "")
+    if cleaned == "":
+        return default
+    try:
+        return int(float(cleaned))
+    except (ValueError, TypeError):
+        return default
+
+
+def parse_float(value: str | int | float | None, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    if isinstance(value, (int, float)):
+        return float(value)
+    cleaned = value.strip().replace(",", "")
+    if cleaned == "":
+        return default
+    try:
+        return float(cleaned)
+    except (ValueError, TypeError):
+        return default
+
+
+def resolve_supplier_id(db, row: dict[str, str | None], cache: dict[str, int | None]) -> int | None:
+    supplier_id_value = row.get("supplier_id")
+    if supplier_id_value not in (None, ""):
+        try:
+            parsed = int(float(str(supplier_id_value)))
+            if parsed > 0:
+                return parsed
+        except (ValueError, TypeError):
+            pass
+
+    supplier_name = row.get("supplier_name")
+    if not supplier_name:
+        return None
+
+    supplier_name = supplier_name.strip()
+    if not supplier_name:
+        return None
+
+    if supplier_name not in cache:
+        result = db.execute_query(
+            "SELECT id FROM suppliers WHERE name = :name",
+            {"name": supplier_name},
+        )
+        cache[supplier_name] = int(result.iloc[0]["id"]) if not result.empty else None
+
+    return cache[supplier_name]
 
 
 def allowed_file(filename: str, allowed_extensions: set) -> bool:
@@ -60,6 +194,23 @@ def decode_qr_from_image(image_bytes: bytes) -> str | None:
 def index():
     """メインページ"""
     return render_template("index.html")
+
+
+@app.route("/download/consumables-template")
+def download_consumables_template():
+    """CSVテンプレートをダウンロード"""
+    template_path = SAMPLES_FOLDER / CSV_TEMPLATE_NAME
+    if not template_path.exists():
+        return jsonify({"success": False, "error": "テンプレートが見つかりません"}), 404
+
+    content = template_path.read_text(encoding="utf-8")
+    response = make_response(content.encode("utf-8-sig"))
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    response.headers[
+        "Content-Disposition"
+    ] = f"attachment; filename*=UTF-8''{CSV_TEMPLATE_NAME}"
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 @app.route("/api/inventory")
@@ -603,6 +754,123 @@ def delete_order(order_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/consumables/import-csv", methods=["POST"])
+def import_consumables_csv():
+    """CSV���񂩂̓��Օi�ЂV�K�o�^"""
+    try:
+        if "file" not in request.files:
+            return jsonify({"success": False, "error": "CSVファイルが見つかりません"}), 400
+
+        file = request.files["file"]
+        if not file or file.filename == "":
+            return jsonify({"success": False, "error": "CSVファイルを選択してください"}), 400
+
+        rows = []
+        fieldnames: list[str] = []
+        text_stream: TextIOWrapper | None = None
+
+        try:
+            text_stream = TextIOWrapper(file.stream, encoding="utf-8-sig")
+            reader = csv.DictReader(text_stream)
+            rows = list(reader)
+            fieldnames = reader.fieldnames or []
+        except UnicodeDecodeError:
+            file.stream.seek(0)
+            text_stream = TextIOWrapper(file.stream, encoding="cp932")
+            reader = csv.DictReader(text_stream)
+            rows = list(reader)
+            fieldnames = reader.fieldnames or []
+        finally:
+            if text_stream is not None:
+                try:
+                    text_stream.detach()
+                except Exception:
+                    pass
+
+        if not rows:
+            return jsonify({"success": False, "error": "CSVにデータがありません"}), 400
+
+        normalized_headers = {
+            resolve_csv_field(name) for name in fieldnames if resolve_csv_field(name)
+        }
+        missing_headers = CSV_REQUIRED_FIELDS - normalized_headers
+        if missing_headers:
+            missing = ", ".join(sorted(missing_headers))
+            return jsonify({"success": False, "error": f"必須列が不足しています: {missing}"}), 400
+
+        db = get_db_manager()
+        supplier_cache: dict[str, int | None] = {}
+        inserted = 0
+        skipped: list[dict[str, str | int]] = []
+        row_errors: list[dict[str, str | int]] = []
+
+        for idx, raw_row in enumerate(rows, start=2):
+            normalized = normalize_csv_row(raw_row)
+            code = (normalized.get("code") or "").strip()
+            name = (normalized.get("name") or "").strip()
+
+            if not code or not name:
+                row_errors.append(
+                    {"row": idx, "code": code, "error": "必須項目(コード/品名)が空です"}
+                )
+                continue
+
+            existing = db.execute_query(
+                "SELECT id FROM consumables WHERE code = :code",
+                {"code": code},
+            )
+            if not existing.empty:
+                skipped.append({"row": idx, "code": code, "reason": "すでに登録済み"})
+                continue
+
+            stock_quantity = parse_int(normalized.get("stock_quantity"), 0)
+            safety_stock = parse_int(normalized.get("safety_stock"), 0)
+            unit_price = parse_float(normalized.get("unit_price"), 0.0)
+            order_unit = parse_int(normalized.get("order_unit"), 1)
+            supplier_id = resolve_supplier_id(db, normalized, supplier_cache)
+
+            order_status = normalized.get("order_status") or "未発注"
+            shortage_status = normalized.get("shortage_status")
+            if not shortage_status:
+                shortage_status = "在庫あり" if stock_quantity >= safety_stock else "要注意"
+
+            params = {
+                "code": code,
+                "order_code": normalized.get("order_code") or "",
+                "name": name,
+                "category": normalized.get("category") or "",
+                "unit": normalized.get("unit") or "箱",
+                "stock_quantity": stock_quantity,
+                "safety_stock": safety_stock,
+                "unit_price": unit_price,
+                "order_unit": order_unit if order_unit > 0 else 1,
+                "supplier_id": supplier_id,
+                "storage_location": normalized.get("storage_location") or "",
+                "image_path": normalized.get("image_path") or "",
+                "note": normalized.get("note") or "",
+                "order_status": order_status,
+                "shortage_status": shortage_status,
+            }
+
+            db.execute_update(CONSUMABLE_INSERT_SQL, params)
+            inserted += 1
+
+        return jsonify(
+            {
+                "success": True,
+                "message": f"CSVから{inserted}件取り込みました",
+                "summary": {
+                    "inserted": inserted,
+                    "skipped": skipped,
+                    "errors": row_errors,
+                },
+            }
+        )
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/consumables", methods=["POST"])
 def create_consumable():
     """消耗品を新規登録するAPI"""
@@ -627,19 +895,7 @@ def create_consumable():
 
         # 消耗品を登録
         db.execute_update(
-            """
-            INSERT INTO consumables (
-                code, order_code, name, category, unit,
-                stock_quantity, safety_stock, unit_price, order_unit,
-                supplier_id, storage_location, image_path, note,
-                order_status, shortage_status
-            ) VALUES (
-                :code, :order_code, :name, :category, :unit,
-                :stock_quantity, :safety_stock, :unit_price, :order_unit,
-                :supplier_id, :storage_location, :image_path, :note,
-                :order_status, :shortage_status
-            )
-            """,
+            CONSUMABLE_INSERT_SQL,
             {
                 "code": code,
                 "order_code": data.get("order_code", ""),

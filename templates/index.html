@@ -46,6 +46,8 @@
             <button id="scanQrBtn" class="btn btn-primary">
                 📷 QRスキャン
             </button>
+
+            
         </div>
 
         <div class="filter-group">
@@ -158,6 +160,19 @@
             <button id="registerSubmitBtn" class="btn btn-primary" style="width: 100%; padding: 15px; font-size: 16px;">
                 ✅ 登録する
             </button>
+
+            <div class="import-section">
+                <h3>CSVインポート</h3>
+                <p class="import-note">
+                    ヘッダー例: 
+                <input type="file" id="csvFileInput" class="input-field file-input" accept=".csv">
+                <div class="import-actions">
+                    <button id="csvImportBtn" class="btn btn-outline">CSVを取り込む</button>
+                    <button id="csvTemplateDownloadBtn" class="btn btn-outline" type="button">CSVテンプレートをダウンロード</button>
+                </div>
+                <small class="import-hint">必須列: code, name ／ 既存コードはスキップされます。</small>
+            </div>
+
         </div>
     </div><!-- 新規登録ページ終了 -->
 

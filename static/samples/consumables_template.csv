@@ -1,0 +1,3 @@
+code,order_code,name,category,unit,stock_quantity,safety_stock,unit_price,order_unit,supplier_name,storage_location,note
+TIP-12-EG-1,S01,EGチップ Sサイズ,実験器具,箱,10,5,1200,1,LabMart,倉庫A,テスト用データ
+NOZUR-20-DB-1,S01,ノズル 20mm,製造部品,本,4,8,850,1,FactoryDirect,ライン1,安全在庫割れサンプル

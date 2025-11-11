@@ -590,6 +590,43 @@ function showError(message) {
     }, 3000);
 }
 
+
+const CSV_TEMPLATE_SAMPLE = [
+    '\uFEFFcode,order_code,name,category,unit,stock_quantity,safety_stock,unit_price,order_unit,supplier_name,storage_location,note',
+    'TIP-12-EG-1,S01,EGチップ Sサイズ,実験器具,箱,10,5,1200,1,LabMart,倉庫A,テスト用データ',
+    'NOZUR-20-DB-1,S01,ノズル 20mm,製造部品,本,4,8,850,1,FactoryDirect,ライン1,安全在庫割れサンプル',
+].join('\n');
+
+function triggerFileDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+async function downloadCsvTemplate() {
+    const filename = 'consumables_template.csv';
+    try {
+        const response = await fetch('/download/consumables-template');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+        triggerFileDownload(blob, filename);
+        showSuccess('CSVテンプレートをダウンロードしました');
+    } catch (error) {
+        console.warn('テンプレート取得に失敗したためローカル生成に切り替えます。', error);
+        const blob = new Blob([CSV_TEMPLATE_SAMPLE], { type: 'text/csv;charset=utf-8;' });
+        triggerFileDownload(blob, filename);
+        showSuccess('サーバーに接続できなかったため、ローカルでサンプルを生成しました');
+    }
+}
+
+
 // ========================================
 // 新規登録ページ
 // ========================================
@@ -682,6 +719,61 @@ async function submitRegisterForm() {
 }
 
 // 新規登録ページの初期化
+
+async function importConsumablesCsv() {
+    const fileInput = document.getElementById('csvFileInput');
+    if (!fileInput || fileInput.files.length === 0) {
+        showError('CSVファイルを選択してください');
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const importButton = document.getElementById('csvImportBtn');
+    if (importButton) {
+        importButton.disabled = true;
+        importButton.textContent = '取り込み中...';
+    }
+
+    try {
+        const response = await fetch('/api/consumables/import-csv', {
+            method: 'POST',
+            body: formData,
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            const summary = result.summary || {};
+            const inserted = summary.inserted || 0;
+            const skipped = summary.skipped ? summary.skipped.length : 0;
+            const errors = summary.errors ? summary.errors.length : 0;
+
+            showSuccess(`CSVを取り込みました（登録${inserted}件 / 既存${skipped}件 / エラー${errors}件）`);
+            if (errors > 0 && summary.errors) {
+                console.group('CSV import errors');
+                console.table(summary.errors);
+                console.groupEnd();
+            }
+
+            fileInput.value = '';
+            loadInventory();
+        } else {
+            showError(result.error || 'CSVの取り込みに失敗しました');
+        }
+    } catch (error) {
+        console.error('CSV import failed:', error);
+        showError('CSVの取り込みに失敗しました');
+    } finally {
+        if (importButton) {
+            importButton.disabled = false;
+            importButton.textContent = 'CSVを取り込む';
+        }
+    }
+}
+
+
 function initRegisterPage() {
     // 購入先を読み込み
     loadSuppliers();
@@ -690,5 +782,21 @@ function initRegisterPage() {
     const registerSubmitBtn = document.getElementById('registerSubmitBtn');
     if (registerSubmitBtn) {
         registerSubmitBtn.addEventListener('click', submitRegisterForm);
+    }
+
+    const csvImportBtn = document.getElementById('csvImportBtn');
+    if (csvImportBtn) {
+        csvImportBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            importConsumablesCsv();
+        });
+    }
+
+    const csvTemplateDownloadBtn = document.getElementById('csvTemplateDownloadBtn');
+    if (csvTemplateDownloadBtn) {
+        csvTemplateDownloadBtn.addEventListener('click', (event) => {
+            event.preventDefault();
+            downloadCsvTemplate();
+        });
     }
 }

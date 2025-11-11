@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS suppliers (
     contact VARCHAR(100) COMMENT '連絡先',
     contact_person VARCHAR(100) COMMENT '担当者',
     email VARCHAR(255) COMMENT 'メールアドレス',
+    phone VARCHAR(20) COMMENT '電話番号',
+    address VARCHAR(255) COMMENT '住所',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_name (name)
