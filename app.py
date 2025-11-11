@@ -86,7 +86,9 @@ CSV_FIELD_ALIASES = {
     "image_path": "image_path",
     "画像パス": "image_path",
     "order_status": "order_status",
+    "注文状態": "order_status",
     "shortage_status": "shortage_status",
+    "欠品状態": "shortage_status",
 }
 
 CSV_REQUIRED_FIELDS = {"code", "name"}

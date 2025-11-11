@@ -297,8 +297,9 @@ lsof -i :8501                 # Mac/Linux
 **Last Updated**: 2025-11-11
 ## CSVインポートで新規登録
 
-- `? 新規登録` ページ最下部の「CSVインポート」から `static/samples/consumables_template.csv` をベースにしたファイルを選択し「CSVを取り込む」を押すと `/api/consumables/import-csv` に送信されます。
-- 必須列は `code` と `name`。任意で `category`, `unit`, `stock_quantity`, `safety_stock`, `unit_price`, `order_unit`, `supplier_name`(または `supplier_id`), `storage_location`, `note`, `order_status`, `shortage_status` を指定できます。
+- `🆕 新規登録` ページ最下部の「CSVインポート」から `static/samples/consumables_template.csv` をベースにしたファイルを選択し「CSVを取り込む」を押すと `/api/consumables/import-csv` に送信されます。
+- テンプレート列は **日本語見出し**（例: `コード, 注文コード, 品名, カテゴリ, 単位, 在庫数, 安全在庫, 単価, 発注単位, 仕入先, 保管場所, 備考, 注文状態, 欠品状態`）。英語列名で作成した CSV も引き続き読み込めます。
+- 必須列は `コード(=code)` と `品名(=name)`。任意で `カテゴリ/category`, `単位/unit`, `在庫数/stock_quantity`, `安全在庫/safety_stock`, `単価/unit_price`, `発注単位/order_unit`, `仕入先/supplier_name`, `保管場所/storage_location`, `備考/note`, `注文状態/order_status`, `欠品状態/shortage_status` などを指定できます。
 - 既存コードは自動的にスキップされ、登録/スキップ/エラー件数がトーストに表示されます。詳細はブラウザのコンソールログにも出力されます。
 - サンプルCSVは `https://<ホスト>:8501/download/consumables-template` からダウンロードできます。UTF-8 BOM 付きで配信しているため Excel でも文字化けせず開けます。ネットワークや証明書の都合で取得できない場合でも、ボタンを押すとクライアント側で同じ内容を UTF-8 BOM 付きで自動生成して保存します。
 
