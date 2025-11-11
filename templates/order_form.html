@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>注文書</title>
+    <style>
+        @page {
+            size: A4 landscape;
+            margin: 15mm;
+        }
+
+        body {
+            font-family: 'MS Gothic', 'Meiryo', sans-serif;
+            font-size: 11pt;
+            line-height: 1.4;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .header h1 {
+            font-size: 24pt;
+            margin: 0 0 10px 0;
+        }
+
+        .order-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+
+        .order-info-left, .order-info-right {
+            width: 48%;
+        }
+
+        .info-row {
+            margin-bottom: 5px;
+        }
+
+        .info-label {
+            display: inline-block;
+            width: 100px;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th, td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #e0e0e0;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .total-row {
+            font-weight: bold;
+            background-color: #f5f5f5;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 9pt;
+        }
+
+        .notes {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #000;
+            min-height: 60px;
+        }
+
+        .notes-title {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>注 文 書</h1>
+    </div>
+
+    <div class="order-info">
+        <div class="order-info-left">
+            <div class="info-row">
+                <span class="info-label">注文書番号:</span>
+                <span>{{ order_number }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">注文日:</span>
+                <span>{{ order_date }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">納期:</span>
+                <span>{{ deadline }}</span>
+            </div>
+        </div>
+
+        <div class="order-info-right">
+            <div class="info-row">
+                <span class="info-label">購入先:</span>
+                <span>{{ supplier_name }}</span>
+            </div>
+            <div class="info-row">
+                <span class="info-label">依頼者:</span>
+                <span>{{ requester }}</span>
+            </div>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 8%;">No.</th>
+                <th style="width: 15%;">コード</th>
+                <th style="width: 30%;">品名</th>
+                <th style="width: 10%;">数量</th>
+                <th style="width: 8%;">単位</th>
+                <th style="width: 12%;">単価</th>
+                <th style="width: 17%;">金額</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ item.code }}</td>
+                <td>{{ item.name }}</td>
+                <td class="text-right">{{ item.quantity }}</td>
+                <td class="text-center">{{ item.unit }}</td>
+                <td class="text-right">¥{{ "{:,.0f}".format(item.unit_price) }}</td>
+                <td class="text-right">¥{{ "{:,.0f}".format(item.total_amount) }}</td>
+            </tr>
+            {% endfor %}
+
+            <tr class="total-row">
+                <td colspan="6" class="text-right">合計金額</td>
+                <td class="text-right">¥{{ "{:,.0f}".format(total_amount) }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="notes">
+        <div class="notes-title">備考:</div>
+        <div>{{ notes }}</div>
+    </div>
+
+    <div class="footer">
+        <p>上記の通り注文いたしますので、よろしくお願い申し上げます。</p>
+    </div>
+</body>
+</html>

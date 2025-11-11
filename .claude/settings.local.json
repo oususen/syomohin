@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ngrok version:*)",
+      "Bash(pip install:*)",
+      "Bash(python inventory_app_flet.py:*)",
+      "Bash(python -m pip install:*)",
+      "Bash(./venv/Scripts/pip:*)",
+      "Bash(python:*)",
+      "Bash(./venv/Scripts/python:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

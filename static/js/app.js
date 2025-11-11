@@ -1,0 +1,694 @@
+// グローバル変数
+let cameraStream = null;
+let filterOptions = { order_status: [], shortage_status: [] };
+let currentPage = 'inventory';
+let currentQrTarget = null; // 現在QRコードを入力しようとしているフィールド
+
+// ページ読み込み時の初期化
+document.addEventListener('DOMContentLoaded', () => {
+    init();
+});
+
+async function init() {
+    // フィルターオプションを取得
+    await loadFilterOptions();
+
+    // 初期データを読み込み
+    await loadInventory();
+
+    // イベントリスナーを設定
+    setupEventListeners();
+}
+
+// イベントリスナーの設定
+function setupEventListeners() {
+    // ナビゲーションボタン
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const page = e.target.dataset.page;
+            switchPage(page);
+        });
+    });
+
+    // 在庫一覧ページ
+    document.getElementById('qrCodeInput').addEventListener('input', debounce(loadInventory, 300));
+    document.getElementById('searchInput').addEventListener('input', debounce(loadInventory, 300));
+    document.getElementById('orderStatus').addEventListener('change', loadInventory);
+    document.getElementById('shortageStatus').addEventListener('change', loadInventory);
+    document.getElementById('clearQrBtn').addEventListener('click', () => {
+        document.getElementById('qrCodeInput').value = '';
+        loadInventory();
+    });
+    document.getElementById('scanQrBtn').addEventListener('click', () => {
+        currentQrTarget = 'qrCodeInput';
+        openCamera();
+    });
+
+    // 出庫ページ
+    document.getElementById('outboundQrCode').addEventListener('input', () => loadItemInfo('outbound'));
+    document.getElementById('outboundScanBtn').addEventListener('click', () => {
+        currentQrTarget = 'outboundQrCode';
+        openCamera();
+    });
+    document.getElementById('submitOutbound').addEventListener('click', submitOutbound);
+
+    // 入庫ページ
+    document.getElementById('showManualInbound').addEventListener('click', () => {
+        document.getElementById('manualInboundForm').style.display = 'block';
+        document.getElementById('autoInboundList').style.display = 'none';
+    });
+    document.getElementById('showAutoInbound').addEventListener('click', () => {
+        document.getElementById('manualInboundForm').style.display = 'none';
+        document.getElementById('autoInboundList').style.display = 'block';
+        loadPendingOrders();
+    });
+    document.getElementById('inboundQrCode').addEventListener('input', () => loadItemInfo('inbound'));
+    document.getElementById('inboundScanBtn').addEventListener('click', () => {
+        currentQrTarget = 'inboundQrCode';
+        openCamera();
+    });
+    document.getElementById('submitInbound').addEventListener('click', submitInbound);
+
+    // 注文依頼ページ
+    document.getElementById('orderQrCode').addEventListener('input', () => loadItemInfo('order'));
+    document.getElementById('orderScanBtn').addEventListener('click', () => {
+        currentQrTarget = 'orderQrCode';
+        openCamera();
+    });
+    document.getElementById('submitOrder').addEventListener('click', submitOrder);
+
+    // 発注状態リストページ
+    document.getElementById('showManualOrders').addEventListener('click', () => {
+        document.getElementById('manualOrdersList').style.display = 'block';
+        document.getElementById('autoOrdersList').style.display = 'none';
+        loadManualOrders();
+    });
+    document.getElementById('showAutoOrders').addEventListener('click', () => {
+        document.getElementById('manualOrdersList').style.display = 'none';
+        document.getElementById('autoOrdersList').style.display = 'block';
+        loadAutoOrders();
+    });
+
+    // カメラモーダル
+    document.getElementById('closeModal').addEventListener('click', closeCamera);
+    document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+    document.getElementById('cameraModal').addEventListener('click', (e) => {
+        if (e.target.id === 'cameraModal') {
+            closeCamera();
+        }
+    });
+}
+
+// ページ切り替え
+function switchPage(page) {
+    currentPage = page;
+
+    // ナビゲーションボタンのactive状態を更新
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.querySelector(`[data-page="${page}"]`).classList.add('active');
+
+    // ページコンテンツの表示を切り替え
+    document.querySelectorAll('.page-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    const pageMap = {
+        'inventory': 'inventoryPage',
+        'register': 'registerPage',
+        'outbound': 'outboundPage',
+        'inbound': 'inboundPage',
+        'order': 'orderPage',
+        'order-list': 'orderListPage'
+    };
+
+    document.getElementById(pageMap[page]).classList.add('active');
+
+    // ページタイトルを更新
+    const titles = {
+        'inventory': '📦 在庫一覧',
+        'register': '➕ 新規登録',
+        'outbound': '📤 出庫',
+        'inbound': '📥 入庫',
+        'order': '📝 注文依頼',
+        'order-list': '📋 発注状態'
+    };
+    document.getElementById('pageTitle').textContent = titles[page];
+
+    // ページごとの初期化処理
+    if (page === 'register') {
+        initRegisterPage();
+    } else if (page === 'order-list') {
+        loadManualOrders();
+    }
+}
+
+// デバウンス関数
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// フィルターオプションを読み込み
+async function loadFilterOptions() {
+    try {
+        const response = await fetch('/api/filter-options');
+        const data = await response.json();
+
+        if (data.success) {
+            filterOptions = data;
+
+            const orderSelect = document.getElementById('orderStatus');
+            orderSelect.innerHTML = data.order_status.map(status =>
+                `<option value="${status}">${status}</option>`
+            ).join('');
+
+            const shortageSelect = document.getElementById('shortageStatus');
+            shortageSelect.innerHTML = data.shortage_status.map(status =>
+                `<option value="${status}">${status}</option>`
+            ).join('');
+        }
+    } catch (error) {
+        console.error('フィルターオプションの取得に失敗:', error);
+    }
+}
+
+// 在庫データを読み込み
+async function loadInventory() {
+    try {
+        const qrCode = document.getElementById('qrCodeInput').value;
+        const searchText = document.getElementById('searchInput').value;
+        const orderStatus = document.getElementById('orderStatus').value;
+        const shortageStatus = document.getElementById('shortageStatus').value;
+
+        const params = new URLSearchParams({
+            qr_code: qrCode,
+            search_text: searchText,
+            order_status: orderStatus,
+            shortage_status: shortageStatus,
+        });
+
+        const response = await fetch(`/api/inventory?${params}`);
+        const data = await response.json();
+
+        if (data.success) {
+            renderInventory(data.data);
+            updateCountInfo(data.filtered, data.total);
+        } else {
+            showError('データの取得に失敗しました: ' + data.error);
+        }
+    } catch (error) {
+        console.error('在庫データの取得に失敗:', error);
+        showError('データの取得に失敗しました');
+    }
+}
+
+// 在庫一覧を表示
+function renderInventory(items) {
+    const container = document.getElementById('inventoryList');
+
+    if (items.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>条件に合致する消耗品が見つかりません。</p>
+                <p>フィルター条件を変えてください。</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = items.map(item => {
+        const stock = parseInt(item['在庫数']);
+        const safety = parseInt(item['安全在庫']);
+        const isStockSufficient = stock >= safety;
+
+        return `
+            <div class="inventory-card">
+                <div class="card-content">
+                    <img
+                        src="${item['画像URL'] || 'https://placehold.co/120x80?text=IMG'}"
+                        alt="${item['品名']}"
+                        class="card-image"
+                    >
+                    <div class="card-details">
+                        <div class="card-row">
+                            <strong>コード:</strong> ${item['コード']} / <strong>発注コード:</strong> ${item['発注コード']}
+                        </div>
+                        <div class="card-row">
+                            <strong>品名:</strong> ${item['品名']} / <strong>カテゴリ:</strong> ${item['カテゴリ']}
+                        </div>
+                        <div class="card-row">
+                            <strong>在庫数:</strong> ${stock} (安全在庫 ${safety}) / <strong>単位:</strong> ${item['単位']}
+                        </div>
+                        <div class="card-row">
+                            <strong>購入先:</strong> ${item['購入先']}
+                        </div>
+                        <div class="card-badges">
+                            <span class="badge ${isStockSufficient ? 'badge-green' : 'badge-red'}">
+                                ${isStockSufficient ? '✅ 在庫あり' : '⚠️ 要補充'}
+                            </span>
+                            <span class="badge badge-blue">
+                                🗂 ${item['注文状態']}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// 表示件数を更新
+function updateCountInfo(filtered, total) {
+    document.getElementById('countInfo').textContent = `表示件数: ${filtered} / ${total}`;
+}
+
+// 商品情報を読み込み（出庫・入庫・注文用）
+async function loadItemInfo(type) {
+    const qrCodeId = type === 'outbound' ? 'outboundQrCode' :
+                     type === 'inbound' ? 'inboundQrCode' : 'orderQrCode';
+    const qrCode = document.getElementById(qrCodeId).value.trim();
+
+    if (!qrCode) {
+        document.getElementById(`${type}ItemInfo`).style.display = 'none';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/inventory?qr_code=${qrCode}`);
+        const data = await response.json();
+
+        if (data.success && data.data.length > 0) {
+            const item = data.data[0];
+            displayItemInfo(type, item);
+        } else {
+            document.getElementById(`${type}ItemInfo`).style.display = 'none';
+            showError('商品が見つかりません');
+        }
+    } catch (error) {
+        console.error('商品情報の取得に失敗:', error);
+    }
+}
+
+// 商品情報を表示
+function displayItemInfo(type, item) {
+    const detailsDiv = document.getElementById(`${type}ItemDetails`);
+    const stock = parseInt(item['在庫数']);
+    const safety = parseInt(item['安全在庫']);
+
+    detailsDiv.innerHTML = `
+        <div style="padding: 12px; background: white; border-radius: 8px; margin-bottom: 12px;">
+            <div style="margin-bottom: 8px;"><strong>品名:</strong> ${item['品名']}</div>
+            <div style="margin-bottom: 8px;"><strong>コード:</strong> ${item['コード']}</div>
+            <div style="margin-bottom: 8px;"><strong>現在庫数:</strong> ${stock} ${item['単位']}</div>
+            <div style="margin-bottom: 8px;"><strong>安全在庫:</strong> ${safety} ${item['単位']}</div>
+            <div><strong>購入先:</strong> ${item['購入先']}</div>
+        </div>
+    `;
+
+    document.getElementById(`${type}ItemInfo`).style.display = 'block';
+    document.getElementById(`${type}ItemInfo`).dataset.itemCode = item['コード'];
+}
+
+// 出庫を送信
+async function submitOutbound() {
+    const code = document.getElementById('outboundItemInfo').dataset.itemCode;
+    const quantity = parseInt(document.getElementById('outboundQuantity').value);
+    const person = document.getElementById('outboundPerson').value.trim();
+    const note = document.getElementById('outboundNote').value.trim();
+
+    if (!quantity || quantity <= 0) {
+        showError('出庫数量を入力してください');
+        return;
+    }
+
+    if (!person) {
+        showError('出庫者名を入力してください');
+        return;
+    }
+
+    // 出庫処理（実際のAPIは未実装）
+    showSuccess(`${code} を ${quantity} 個出庫しました（出庫者: ${person}）`);
+
+    // フォームをクリア
+    document.getElementById('outboundQrCode').value = '';
+    document.getElementById('outboundQuantity').value = '';
+    document.getElementById('outboundPerson').value = '';
+    document.getElementById('outboundNote').value = '';
+    document.getElementById('outboundItemInfo').style.display = 'none';
+}
+
+// 入庫を送信
+async function submitInbound() {
+    const code = document.getElementById('inboundItemInfo').dataset.itemCode;
+    const quantity = parseInt(document.getElementById('inboundQuantity').value);
+    const person = document.getElementById('inboundPerson').value.trim();
+
+    if (!quantity || quantity <= 0) {
+        showError('入庫数量を入力してください');
+        return;
+    }
+
+    if (!person) {
+        showError('入庫者名を入力してください');
+        return;
+    }
+
+    // 入庫処理（実際のAPIは未実装）
+    showSuccess(`${code} を ${quantity} 個入庫しました（入庫者: ${person}）`);
+
+    // フォームをクリア
+    document.getElementById('inboundQrCode').value = '';
+    document.getElementById('inboundQuantity').value = '';
+    document.getElementById('inboundPerson').value = '';
+    document.getElementById('inboundItemInfo').style.display = 'none';
+}
+
+// 注文依頼を送信
+async function submitOrder() {
+    const code = document.getElementById('orderItemInfo').dataset.itemCode;
+    const quantity = parseInt(document.getElementById('orderQuantity').value);
+    const deadline = document.getElementById('orderDeadline').value;
+    const requester = document.getElementById('orderRequester').value.trim();
+    const note = document.getElementById('orderNote').value.trim();
+
+    if (!quantity || quantity <= 0) {
+        showError('注文数量を入力してください');
+        return;
+    }
+
+    if (!requester) {
+        showError('発注依頼者名を入力してください');
+        return;
+    }
+
+    // 注文依頼処理（実際のAPIは未実装）
+    showSuccess(`${code} を ${quantity} 個注文依頼しました（納期: ${deadline}）`);
+
+    // フォームをクリア
+    document.getElementById('orderQrCode').value = '';
+    document.getElementById('orderQuantity').value = '';
+    document.getElementById('orderRequester').value = '';
+    document.getElementById('orderNote').value = '';
+    document.getElementById('orderItemInfo').style.display = 'none';
+}
+
+// 発注待ち一覧を読み込み
+async function loadPendingOrders() {
+    const container = document.getElementById('pendingOrdersList');
+    container.innerHTML = '<p class="loading">読み込み中...</p>';
+
+    // ダミーデータ（実際のAPIは未実装）
+    setTimeout(() => {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>発注待ちの商品はありません。</p>
+            </div>
+        `;
+    }, 500);
+}
+
+// 人からの依頼リストを読み込み
+async function loadManualOrders() {
+    const container = document.getElementById('manualOrdersContent');
+    container.innerHTML = '<p class="loading">読み込み中...</p>';
+
+    // ダミーデータ（実際のAPIは未実装）
+    setTimeout(() => {
+        container.innerHTML = `
+            <div class="order-card">
+                <div style="margin-bottom: 8px;"><strong>品名:</strong> EGチップ</div>
+                <div style="margin-bottom: 8px;"><strong>数量:</strong> 1 箱</div>
+                <div style="margin-bottom: 8px;"><strong>依頼者:</strong> 渡美 圭佑</div>
+                <div style="margin-bottom: 8px;"><strong>依頼日:</strong> 2025-06-24</div>
+                <div><span class="badge badge-blue">依頼中</span></div>
+            </div>
+            <div class="order-card">
+                <div style="margin-bottom: 8px;"><strong>品名:</strong> EGチップ</div>
+                <div style="margin-bottom: 8px;"><strong>数量:</strong> 1 箱</div>
+                <div style="margin-bottom: 8px;"><strong>依頼日:</strong> 2025-06-26</div>
+                <div><span class="badge badge-blue">依頼中</span></div>
+            </div>
+        `;
+    }, 500);
+}
+
+// 自動依頼分リストを読み込み
+async function loadAutoOrders() {
+    const container = document.getElementById('autoOrdersContent');
+    container.innerHTML = '<p class="loading">読み込み中...</p>';
+
+    // ダミーデータ（実際のAPIは未実装）
+    setTimeout(() => {
+        container.innerHTML = `
+            <div class="order-card">
+                <div style="margin-bottom: 8px;"><strong>品名:</strong> サンダー</div>
+                <div style="margin-bottom: 8px;"><strong>数量:</strong> 1 台</div>
+                <div style="margin-bottom: 8px;"><strong>発注日:</strong> 自動</div>
+                <div><span class="badge badge-green">発注済</span></div>
+            </div>
+        `;
+    }, 500);
+}
+
+// カメラを開く
+async function openCamera() {
+    const modal = document.getElementById('cameraModal');
+    const video = document.getElementById('cameraVideo');
+
+    try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } }
+        });
+
+        video.srcObject = cameraStream;
+        modal.style.display = 'block';
+    } catch (error) {
+        console.error('カメラのアクセスに失敗:', error);
+        alert('カメラへのアクセスができませんでした。ブラウザの設定を確認してください。');
+    }
+}
+
+// カメラを閉じる
+function closeCamera() {
+    const modal = document.getElementById('cameraModal');
+
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+
+    modal.style.display = 'none';
+}
+
+// 写真を撮影してQRコードを読み取る
+async function capturePhoto() {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('cameraCanvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+
+    const imageData = canvas.toDataURL('image/jpeg');
+    await decodeQRCode(imageData);
+}
+
+// QRコードを解析
+async function decodeQRCode(imageData) {
+    try {
+        const response = await fetch('/api/decode-qr', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: imageData }),
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // QRコードが読み取れた
+            if (currentQrTarget) {
+                document.getElementById(currentQrTarget).value = data.data;
+
+                // ページに応じて商品情報を読み込み
+                if (currentQrTarget === 'outboundQrCode') {
+                    await loadItemInfo('outbound');
+                } else if (currentQrTarget === 'inboundQrCode') {
+                    await loadItemInfo('inbound');
+                } else if (currentQrTarget === 'orderQrCode') {
+                    await loadItemInfo('order');
+                } else if (currentQrTarget === 'qrCodeInput') {
+                    await loadInventory();
+                }
+            }
+
+            closeCamera();
+            showSuccess(`QRコードを読み取りました: ${data.data}`);
+        } else {
+            showError('QRコードを認識できませんでした。もう一度お試しください。');
+        }
+    } catch (error) {
+        console.error('QRコードの解析に失敗:', error);
+        showError('QRコードの解析に失敗しました');
+    }
+}
+
+// 成功メッセージを表示
+function showSuccess(message) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #4caf50;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 2000;
+        animation: slideIn 0.3s;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// エラーメッセージを表示
+function showError(message) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #f44336;
+        color: white;
+        padding: 16px 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 2000;
+        animation: slideIn 0.3s;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.remove();
+    }, 3000);
+}
+
+// ========================================
+// 新規登録ページ
+// ========================================
+
+// 購入先一覧を読み込む
+async function loadSuppliers() {
+    try {
+        const response = await fetch('/api/suppliers');
+        const result = await response.json();
+
+        if (result.success) {
+            const select = document.getElementById('registerSupplier');
+            select.innerHTML = '<option value="">-- 購入先を選択 --</option>';
+
+            result.data.forEach(supplier => {
+                const option = document.createElement('option');
+                option.value = supplier.id;
+                option.textContent = supplier.name;
+                select.appendChild(option);
+            });
+        }
+    } catch (error) {
+        console.error('購入先の読み込みに失敗しました:', error);
+    }
+}
+
+// 新規登録フォームを送信
+async function submitRegisterForm() {
+    const code = document.getElementById('registerCode').value.trim();
+    const name = document.getElementById('registerName').value.trim();
+
+    // 必須チェック
+    if (!code || !name) {
+        showError('コードと品名は必須です');
+        return;
+    }
+
+    const data = {
+        code: code,
+        order_code: document.getElementById('registerOrderCode').value.trim(),
+        name: name,
+        category: document.getElementById('registerCategory').value.trim(),
+        unit: document.getElementById('registerUnit').value.trim() || '個',
+        stock_quantity: parseInt(document.getElementById('registerStockQty').value) || 0,
+        safety_stock: parseInt(document.getElementById('registerSafetyStock').value) || 0,
+        unit_price: parseFloat(document.getElementById('registerUnitPrice').value) || 0,
+        order_unit: parseInt(document.getElementById('registerOrderUnit').value) || 1,
+        supplier_id: document.getElementById('registerSupplier').value ? parseInt(document.getElementById('registerSupplier').value) : null,
+        storage_location: document.getElementById('registerStorageLocation').value.trim(),
+        note: document.getElementById('registerNote').value.trim()
+    };
+
+    try {
+        const response = await fetch('/api/consumables', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('消耗品を登録しました');
+            // フォームをクリア
+            document.getElementById('registerCode').value = '';
+            document.getElementById('registerOrderCode').value = '';
+            document.getElementById('registerName').value = '';
+            document.getElementById('registerCategory').value = '';
+            document.getElementById('registerUnit').value = '個';
+            document.getElementById('registerStockQty').value = '0';
+            document.getElementById('registerSafetyStock').value = '0';
+            document.getElementById('registerUnitPrice').value = '0';
+            document.getElementById('registerOrderUnit').value = '1';
+            document.getElementById('registerSupplier').value = '';
+            document.getElementById('registerStorageLocation').value = '';
+            document.getElementById('registerNote').value = '';
+            // 在庫一覧に戻る
+            setTimeout(() => {
+                switchPage('inventory');
+            }, 1500);
+        } else {
+            showError(result.error || '登録に失敗しました');
+        }
+    } catch (error) {
+        console.error('登録エラー:', error);
+        showError('登録に失敗しました');
+    }
+}
+
+// 新規登録ページの初期化
+function initRegisterPage() {
+    // 購入先を読み込み
+    loadSuppliers();
+
+    // 登録ボタンのイベントリスナー
+    const registerSubmitBtn = document.getElementById('registerSubmitBtn');
+    if (registerSubmitBtn) {
+        registerSubmitBtn.addEventListener('click', submitRegisterForm);
+    }
+}

@@ -1,0 +1,14 @@
+[logger]
+# Level of logging: 'error', 'warning', 'info', or 'debug'.
+level = "error"
+messageFormat = "%(message)s"
+
+[server]
+# Enable HTTPS
+sslCertFile = ".streamlit/cert.pem"
+sslKeyFile = ".streamlit/key.pem"
+
+# 外部アクセスを許可
+headless = true
+enableCORS = false
+enableXsrfProtection = false

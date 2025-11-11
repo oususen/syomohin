@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📦 消耗品在庫一覧</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- ヘッダー -->
+    <header class="header">
+        <h1 id="pageTitle">📦 消耗品在庫管理システム</h1>
+        <p class="subtitle">PowerApps版をFlask + JavaScriptで再現</p>
+    </header>
+
+    <!-- ナビゲーションメニュー -->
+    <nav class="nav-menu">
+        <button class="nav-btn active" data-page="inventory">📦 在庫一覧</button>
+        <button class="nav-btn" data-page="register">➕ 新規登録</button>
+        <button class="nav-btn" data-page="outbound">📤 出庫</button>
+        <button class="nav-btn" data-page="inbound">📥 入庫</button>
+        <button class="nav-btn" data-page="order">📝 注文依頼</button>
+        <button class="nav-btn" data-page="order-list">📋 発注状態</button>
+    </nav>
+
+    <!-- 在庫一覧ページ -->
+    <div id="inventoryPage" class="page-content active">
+    <!-- フィルターエリア -->
+    <div class="filter-container">
+        <h2>フィルター</h2>
+
+        <div class="filter-group">
+            <label for="qrCodeInput">QRコード検索</label>
+            <input
+                type="text"
+                id="qrCodeInput"
+                placeholder="QRコードを読み取る / 手入力"
+                class="input-field"
+            >
+        </div>
+
+        <div class="button-group">
+            <button id="clearQrBtn" class="btn btn-secondary">
+                🗑️ QRコードをクリア
+            </button>
+            <button id="scanQrBtn" class="btn btn-primary">
+                📷 QRスキャン
+            </button>
+        </div>
+
+        <div class="filter-group">
+            <label for="searchInput">品名検索</label>
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="品名を検索できます"
+                class="input-field"
+            >
+        </div>
+
+        <div class="filter-row">
+            <div class="filter-group">
+                <label for="orderStatus">注文状態</label>
+                <select id="orderStatus" class="input-field">
+                    <option value="すべて">すべて</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="shortageStatus">欠品状態</label>
+                <select id="shortageStatus" class="input-field">
+                    <option value="すべて">すべて</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- 表示件数 -->
+    <div class="count-info">
+        <p id="countInfo">表示件数: 0 / 0</p>
+    </div>
+
+    <!-- 在庫一覧 -->
+    <div id="inventoryList" class="inventory-list">
+        <p class="loading">読み込み中...</p>
+    </div>
+    </div><!-- 在庫一覧ページ終了 -->
+
+    <!-- 新規登録ページ -->
+    <div id="registerPage" class="page-content">
+        <div class="page-header">
+            <h2>➕ 新規登録</h2>
+            <p>新しい消耗品を登録します</p>
+        </div>
+
+        <div class="form-container">
+            <div class="filter-group">
+                <label for="registerCode">コード *</label>
+                <input type="text" id="registerCode" class="input-field" placeholder="商品コード（必須）" required>
+            </div>
+
+            <div class="filter-group">
+                <label for="registerOrderCode">発注コード</label>
+                <input type="text" id="registerOrderCode" class="input-field" placeholder="発注コード">
+            </div>
+
+            <div class="filter-group">
+                <label for="registerName">品名 *</label>
+                <input type="text" id="registerName" class="input-field" placeholder="品名（必須）" required>
+            </div>
+
+            <div class="filter-group">
+                <label for="registerCategory">カテゴリ</label>
+                <input type="text" id="registerCategory" class="input-field" placeholder="カテゴリ">
+            </div>
+
+            <div class="filter-group">
+                <label for="registerUnit">単位</label>
+                <input type="text" id="registerUnit" class="input-field" placeholder="単位" value="個">
+            </div>
+
+            <div class="filter-group">
+                <label for="registerStockQty">在庫数</label>
+                <input type="number" id="registerStockQty" class="input-field" placeholder="在庫数" value="0" min="0">
+            </div>
+
+            <div class="filter-group">
+                <label for="registerSafetyStock">安全在庫</label>
+                <input type="number" id="registerSafetyStock" class="input-field" placeholder="安全在庫" value="0" min="0">
+            </div>
+
+            <div class="filter-group">
+                <label for="registerUnitPrice">単価</label>
+                <input type="number" id="registerUnitPrice" class="input-field" placeholder="単価" value="0" min="0">
+            </div>
+
+            <div class="filter-group">
+                <label for="registerOrderUnit">発注単位</label>
+                <input type="number" id="registerOrderUnit" class="input-field" placeholder="発注単位" value="1" min="1">
+            </div>
+
+            <div class="filter-group">
+                <label for="registerSupplier">購入先</label>
+                <select id="registerSupplier" class="input-field">
+                    <option value="">-- 購入先を選択 --</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="registerStorageLocation">保管場所</label>
+                <input type="text" id="registerStorageLocation" class="input-field" placeholder="保管場所">
+            </div>
+
+            <div class="filter-group">
+                <label for="registerNote">備考</label>
+                <textarea id="registerNote" class="input-field" rows="3" placeholder="備考"></textarea>
+            </div>
+
+            <button id="registerSubmitBtn" class="btn btn-primary" style="width: 100%; padding: 15px; font-size: 16px;">
+                ✅ 登録する
+            </button>
+        </div>
+    </div><!-- 新規登録ページ終了 -->
+
+    <!-- 出庫ページ -->
+    <div id="outboundPage" class="page-content">
+        <div class="page-header">
+            <h2>📤 出庫</h2>
+            <p>在庫から商品を出庫します</p>
+        </div>
+
+        <div class="form-container">
+            <div class="filter-group">
+                <label for="outboundQrCode">QRコード検索</label>
+                <input type="text" id="outboundQrCode" class="input-field" placeholder="QRコードを読み取る">
+                <button id="outboundScanBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
+                    📷 QRスキャン
+                </button>
+            </div>
+
+            <div id="outboundItemInfo" class="item-info" style="display: none;">
+                <h3>商品情報</h3>
+                <div id="outboundItemDetails"></div>
+
+                <div class="filter-group">
+                    <label for="outboundQuantity">出庫数量</label>
+                    <input type="number" id="outboundQuantity" class="input-field" min="1" placeholder="出庫数量を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="outboundPerson">出庫者</label>
+                    <input type="text" id="outboundPerson" class="input-field" placeholder="出庫者名を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="outboundNote">備考</label>
+                    <textarea id="outboundNote" class="input-field" rows="3" placeholder="備考（任意）"></textarea>
+                </div>
+
+                <button id="submitOutbound" class="btn btn-primary" style="width: 100%;">
+                    ✅ 出庫を確定
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 入庫ページ -->
+    <div id="inboundPage" class="page-content">
+        <div class="page-header">
+            <h2>📥 入庫</h2>
+            <p>商品を入庫します</p>
+        </div>
+
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" id="showManualInbound">📝 手動入庫</button>
+            <button class="btn btn-secondary" id="showAutoInbound">🤖 自動依頼分</button>
+        </div>
+
+        <!-- 手動入庫 -->
+        <div id="manualInboundForm" class="form-container">
+            <h3>手動入庫</h3>
+
+            <div class="filter-group">
+                <label for="inboundQrCode">QRコード検索</label>
+                <input type="text" id="inboundQrCode" class="input-field" placeholder="QRコードを読み取る">
+                <button id="inboundScanBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
+                    📷 QRスキャン
+                </button>
+            </div>
+
+            <div id="inboundItemInfo" class="item-info" style="display: none;">
+                <h3>商品情報</h3>
+                <div id="inboundItemDetails"></div>
+
+                <div class="filter-group">
+                    <label for="inboundQuantity">入庫数量</label>
+                    <input type="number" id="inboundQuantity" class="input-field" min="1" placeholder="入庫数量を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="inboundPerson">入庫者</label>
+                    <input type="text" id="inboundPerson" class="input-field" placeholder="入庫者名を入力">
+                </div>
+
+                <button id="submitInbound" class="btn btn-primary" style="width: 100%;">
+                    ✅ 入庫を確定
+                </button>
+            </div>
+        </div>
+
+        <!-- 自動依頼分入庫 -->
+        <div id="autoInboundList" class="form-container" style="display: none;">
+            <h3>自動依頼分の入庫</h3>
+            <div id="pendingOrdersList"></div>
+        </div>
+    </div>
+
+    <!-- 注文依頼ページ -->
+    <div id="orderPage" class="page-content">
+        <div class="page-header">
+            <h2>📝 注文依頼</h2>
+            <p>不足している商品の注文を依頼します</p>
+        </div>
+
+        <div class="form-container">
+            <div class="filter-group">
+                <label for="orderQrCode">QRコード検索</label>
+                <input type="text" id="orderQrCode" class="input-field" placeholder="QRコードを読み取る">
+                <button id="orderScanBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
+                    📷 QRスキャン
+                </button>
+            </div>
+
+            <div id="orderItemInfo" class="item-info" style="display: none;">
+                <h3>商品情報</h3>
+                <div id="orderItemDetails"></div>
+
+                <div class="filter-group">
+                    <label for="orderQuantity">注文数量</label>
+                    <input type="number" id="orderQuantity" class="input-field" min="1" placeholder="注文数量を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="orderDeadline">納期</label>
+                    <select id="orderDeadline" class="input-field">
+                        <option value="最短">最短</option>
+                        <option value="通常">通常</option>
+                        <option value="余裕あり">余裕あり</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="orderRequester">発注依頼者</label>
+                    <input type="text" id="orderRequester" class="input-field" placeholder="依頼者名を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="orderNote">備考</label>
+                    <textarea id="orderNote" class="input-field" rows="3" placeholder="備考（任意）"></textarea>
+                </div>
+
+                <button id="submitOrder" class="btn btn-primary" style="width: 100%;">
+                    ✅ 注文依頼を送信
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 発注状態リストページ -->
+    <div id="orderListPage" class="page-content">
+        <div class="page-header">
+            <h2>📋 発注依頼状態リスト</h2>
+            <p>発注依頼の状況を確認します</p>
+        </div>
+
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" id="showManualOrders">👤 人からの依頼</button>
+            <button class="btn btn-secondary" id="showAutoOrders">🤖 自動依頼分</button>
+        </div>
+
+        <!-- 人からの依頼リスト -->
+        <div id="manualOrdersList" class="list-container">
+            <h3>人からの依頼</h3>
+            <div id="manualOrdersContent"></div>
+        </div>
+
+        <!-- 自動依頼分リスト -->
+        <div id="autoOrdersList" class="list-container" style="display: none;">
+            <h3>自動依頼分（発注済み）</h3>
+            <div id="autoOrdersContent"></div>
+        </div>
+    </div>
+
+    <!-- カメラモーダル -->
+    <div id="cameraModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>QRコードスキャン</h2>
+                <button id="closeModal" class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <video id="cameraVideo" autoplay playsinline></video>
+                <canvas id="cameraCanvas" style="display: none;"></canvas>
+            </div>
+            <div class="modal-footer">
+                <button id="captureBtn" class="btn btn-primary">
+                    📸 撮影
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
