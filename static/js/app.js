@@ -55,6 +55,7 @@ function setupEventListeners() {
         currentQrTarget = 'outboundQrCode';
         openCamera();
     });
+    document.getElementById('outboundSearchText').addEventListener('input', debounce(() => searchItemByName('outbound'), 300));
     document.getElementById('submitOutbound').addEventListener('click', submitOutbound);
 
     // 入庫ページ
@@ -72,6 +73,7 @@ function setupEventListeners() {
         currentQrTarget = 'inboundQrCode';
         openCamera();
     });
+    document.getElementById('inboundSearchText').addEventListener('input', debounce(() => searchItemByName('inbound'), 300));
     document.getElementById('submitInbound').addEventListener('click', submitInbound);
 
     // 注文依頼ページ
@@ -102,6 +104,21 @@ function setupEventListeners() {
             closeCamera();
         }
     });
+
+    // 検索結果ドロップダウンを外側クリックで閉じる
+    document.addEventListener('click', (e) => {
+        const outboundResults = document.getElementById('outboundSearchResults');
+        const inboundResults = document.getElementById('inboundSearchResults');
+        const outboundSearch = document.getElementById('outboundSearchText');
+        const inboundSearch = document.getElementById('inboundSearchText');
+
+        if (outboundResults && !outboundSearch?.contains(e.target) && !outboundResults.contains(e.target)) {
+            outboundResults.style.display = 'none';
+        }
+        if (inboundResults && !inboundSearch?.contains(e.target) && !inboundResults.contains(e.target)) {
+            inboundResults.style.display = 'none';
+        }
+    });
 }
 
 // ページ切り替え
@@ -126,7 +143,8 @@ function switchPage(page) {
         'inbound': 'inboundPage',
         'order': 'orderPage',
         'order-list': 'orderListPage',
-        'dispatch': 'dispatchPage'
+        'dispatch': 'dispatchPage',
+        'suppliers': 'suppliersPage'
     };
 
     document.getElementById(pageMap[page]).classList.add('active');
@@ -134,12 +152,13 @@ function switchPage(page) {
     // ページタイトルを更新
     const titles = {
         'inventory': '📦 在庫一覧',
-        'register': '➕ 新規登録',
+        'register': '🧰 消耗品管理',
         'outbound': '📤 出庫',
         'inbound': '📥 入庫',
         'order': '📝 注文依頼',
         'order-list': '📋 発注状態',
-        'dispatch': '📮 発注'
+        'dispatch': '📮 発注',
+        'suppliers': '🏢 購入先管理'
     };
     document.getElementById('pageTitle').textContent = titles[page];
 
@@ -150,6 +169,8 @@ function switchPage(page) {
         loadManualOrders();
     } else if (page === 'dispatch') {
         initDispatchPage();
+    } else if (page === 'suppliers') {
+        initSuppliersPage();
     }
 }
 
@@ -447,6 +468,136 @@ async function loadItemInfo(type) {
         }
     } catch (error) {
         console.error('商品情報の取得に失敗:', error);
+    }
+}
+
+// 品名で商品を検索
+async function searchItemByName(type) {
+    const searchInputId = type === 'outbound' ? 'outboundSearchText' : 'inboundSearchText';
+    const searchText = document.getElementById(searchInputId).value.trim();
+
+    // 検索結果表示用のコンテナを取得または作成
+    let resultsContainer = document.getElementById(`${type}SearchResults`);
+    if (!resultsContainer) {
+        resultsContainer = document.createElement('div');
+        resultsContainer.id = `${type}SearchResults`;
+        resultsContainer.className = 'search-results-dropdown';
+        resultsContainer.style.cssText = `
+            position: absolute;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 100;
+            display: none;
+            margin-top: 4px;
+            width: calc(100% - 32px);
+        `;
+        document.getElementById(searchInputId).parentElement.style.position = 'relative';
+        document.getElementById(searchInputId).parentElement.appendChild(resultsContainer);
+    }
+
+    if (!searchText) {
+        resultsContainer.style.display = 'none';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/inventory?search_text=${encodeURIComponent(searchText)}`);
+        const data = await response.json();
+
+        if (data.success && data.data.length > 0) {
+            displaySearchResults(type, data.data, resultsContainer);
+        } else {
+            resultsContainer.innerHTML = `
+                <div style="padding: 12px; color: #666;">
+                    該当する商品が見つかりません
+                </div>
+            `;
+            resultsContainer.style.display = 'block';
+        }
+    } catch (error) {
+        console.error('商品検索に失敗:', error);
+        resultsContainer.style.display = 'none';
+    }
+}
+
+// 検索結果キャッシュ
+let outboundSearchCache = [];
+let inboundSearchCache = [];
+
+// 検索結果を表示
+function displaySearchResults(type, items, container) {
+    // 結果をキャッシュ
+    if (type === 'outbound') {
+        outboundSearchCache = items;
+    } else if (type === 'inbound') {
+        inboundSearchCache = items;
+    }
+
+    container.innerHTML = items.slice(0, 10).map((item, index) => {
+        const code = pickField(item, ['コード', 'code']);
+        const name = pickField(item, ['品名', 'name']);
+        const stock = pickField(item, ['在庫数', 'stock_quantity']);
+        const unit = pickField(item, ['単位', 'unit']) || '個';
+        const supplier = pickField(item, ['購入先', 'supplier_name']);
+
+        return `
+            <div class="search-result-item"
+                 style="padding: 12px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s;"
+                 onmouseover="this.style.background='#f5f5f5'"
+                 onmouseout="this.style.background='white'"
+                 onclick="selectSearchResultItem('${type}', ${index})">
+                <div style="font-weight: bold; margin-bottom: 4px;">${name}</div>
+                <div style="font-size: 13px; color: #666;">
+                    コード: ${code} | 在庫: ${stock} ${unit} | 購入先: ${supplier || '-'}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (items.length > 10) {
+        container.innerHTML += `
+            <div style="padding: 8px; text-align: center; color: #666; font-size: 12px; background: #f9f9f9;">
+                他 ${items.length - 10} 件...（絞り込んでください）
+            </div>
+        `;
+    }
+
+    container.style.display = 'block';
+}
+
+// 検索結果から商品を選択
+function selectSearchResultItem(type, itemIndex) {
+    // キャッシュから商品を取得
+    const cache = type === 'outbound' ? outboundSearchCache : inboundSearchCache;
+    const item = cache[itemIndex];
+
+    if (!item) {
+        showError('商品情報の取得に失敗しました');
+        return;
+    }
+
+    // 商品情報を表示
+    displayItemInfo(type, item);
+
+    // 検索フィールドに選択した商品名を設定
+    const searchInputId = type === 'outbound' ? 'outboundSearchText' : 'inboundSearchText';
+    const name = pickField(item, ['品名', 'name']);
+    document.getElementById(searchInputId).value = name;
+
+    // 検索結果を非表示
+    const resultsContainer = document.getElementById(`${type}SearchResults`);
+    if (resultsContainer) {
+        resultsContainer.style.display = 'none';
+    }
+
+    // 数量入力欄にフォーカス
+    const quantityField = document.getElementById(`${type}Quantity`);
+    if (quantityField) {
+        quantityField.focus();
     }
 }
 
@@ -1941,4 +2092,196 @@ function buildImageUrl(imagePath) {
 
     // それ以外の場合は /uploads/ を追加
     return '/uploads/' + pathStr;
+}
+
+// ========================================
+// 購入先管理機能
+// ========================================
+
+let currentSuppliersSubtab = 'list';
+let suppliersPageEventsBound = false;
+
+function initSuppliersPage() {
+    if (!suppliersPageEventsBound) {
+        setupSuppliersSubtabs();
+
+        const submitBtn = document.getElementById('supplierSubmitBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', submitSupplierForm);
+        }
+
+        suppliersPageEventsBound = true;
+    }
+
+    if (currentSuppliersSubtab === 'list') {
+        loadSuppliersList();
+    }
+}
+
+function setupSuppliersSubtabs() {
+    const container = document.getElementById('suppliersSubtabs');
+    if (!container) return;
+
+    container.querySelectorAll('.subtab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            switchSuppliersSubtab(btn.dataset.detailTab);
+        });
+    });
+    switchSuppliersSubtab(currentSuppliersSubtab);
+}
+
+function switchSuppliersSubtab(target) {
+    if (!target) return;
+    currentSuppliersSubtab = target;
+
+    document.querySelectorAll('#suppliersSubtabs .subtab-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.detailTab === target);
+    });
+
+    document.querySelectorAll('#suppliersPage [data-detail-tab-content]').forEach((section) => {
+        const isTarget = section.dataset.detailTabContent === target;
+        section.hidden = !isTarget;
+    });
+
+    if (target === 'list') {
+        loadSuppliersList();
+    }
+}
+
+async function loadSuppliersList() {
+    const container = document.getElementById('suppliersList');
+    if (!container) return;
+
+    container.innerHTML = '<p class="loading">読み込み中...</p>';
+
+    try {
+        const response = await fetch('/api/suppliers');
+        const data = await response.json();
+
+        if (data.success) {
+            renderSuppliersList(data.data || []);
+        } else {
+            container.innerHTML = `<p class="error">${data.error || '読み込みに失敗しました'}</p>`;
+        }
+    } catch (error) {
+        console.error('suppliers load error:', error);
+        container.innerHTML = '<p class="error">読み込みに失敗しました</p>';
+    }
+}
+
+function renderSuppliersList(suppliers) {
+    const container = document.getElementById('suppliersList');
+    if (!container) return;
+
+    if (!suppliers || suppliers.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <p>購入先が登録されていません。</p>
+                <p>「新規追加」タブから購入先を登録してください。</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = suppliers.map((supplier) => {
+        const id = supplier.id;
+        const name = supplier.name || '-';
+        const contact = supplier.contact_person || '-';
+        const email = supplier.email || '-';
+        const address = supplier.address || '-';
+        const note = supplier.note || '-';
+
+        return `
+            <div class="supplier-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; background: #fff;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                    <h4 style="margin: 0; font-size: 18px; color: #333;">${name}</h4>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" onclick="editSupplier(${id})" style="padding: 6px 12px; font-size: 14px;">✏️ 編集</button>
+                        <button class="btn btn-outline" onclick="deleteSupplier(${id}, '${name}')" style="padding: 6px 12px; font-size: 14px; color: #d32f2f; border-color: #d32f2f;">🗑️ 削除</button>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 14px; color: #666;">
+                    <strong>連絡先:</strong><span>${contact}</span>
+                    <strong>メール:</strong><span>${email}</span>
+                    <strong>住所:</strong><span>${address}</span>
+                    ${note !== '-' ? `<strong>備考:</strong><span>${note}</span>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function submitSupplierForm() {
+    const name = document.getElementById('supplierName').value.trim();
+
+    if (!name) {
+        showError('購入先名は必須です');
+        return;
+    }
+
+    const data = {
+        name: name,
+        contact_person: document.getElementById('supplierContact').value.trim(),
+        email: document.getElementById('supplierEmail').value.trim(),
+        address: document.getElementById('supplierAddress').value.trim(),
+        note: document.getElementById('supplierNote').value.trim()
+    };
+
+    try {
+        const response = await fetch('/api/suppliers', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('購入先を登録しました');
+            // フォームをクリア
+            document.getElementById('supplierName').value = '';
+            document.getElementById('supplierContact').value = '';
+            document.getElementById('supplierEmail').value = '';
+            document.getElementById('supplierAddress').value = '';
+            document.getElementById('supplierNote').value = '';
+            // 一覧タブに切り替え
+            switchSuppliersSubtab('list');
+        } else {
+            showError(result.error || '登録に失敗しました');
+        }
+    } catch (error) {
+        console.error('supplier register error:', error);
+        showError('登録に失敗しました');
+    }
+}
+
+async function editSupplier(id) {
+    // TODO: 編集機能を実装
+    showError('編集機能は未実装です');
+}
+
+async function deleteSupplier(id, name) {
+    if (!confirm(`購入先「${name}」を削除しますか？\n\n※ この購入先を使用している消耗品がある場合、削除できません。`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/suppliers/${id}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('購入先を削除しました');
+            loadSuppliersList();
+        } else {
+            showError(result.error || '削除に失敗しました');
+        }
+    } catch (error) {
+        console.error('supplier delete error:', error);
+        showError('削除に失敗しました');
+    }
 }

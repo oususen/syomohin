@@ -22,6 +22,7 @@
         <button class="nav-btn" data-page="order">注文依頼</button>
         <button class="nav-btn" data-page="order-list">発注状態</button>
         <button class="nav-btn" data-page="dispatch">発注</button>
+        <button class="nav-btn" data-page="suppliers">購入先管理</button>
     </nav>
 
     <!-- 在庫一覧ページ -->
@@ -276,6 +277,11 @@
                 </button>
             </div>
 
+            <div class="filter-group">
+                <label for="outboundSearchText">品名検索</label>
+                <input type="text" id="outboundSearchText" class="input-field" placeholder="品名で検索">
+            </div>
+
             <div id="outboundItemInfo" class="item-info" style="display: none;">
                 <h3>商品情報</h3>
                 <div id="outboundItemDetails"></div>
@@ -324,6 +330,11 @@
                 <button id="inboundScanBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
                     QR QRスキャン
                 </button>
+            </div>
+
+            <div class="filter-group">
+                <label for="inboundSearchText">品名検索</label>
+                <input type="text" id="inboundSearchText" class="input-field" placeholder="品名で検索">
             </div>
 
             <div id="inboundItemInfo" class="item-info" style="display: none;">
@@ -576,6 +587,65 @@
             <div class="form-container">
                 <h3> 発注完了</h3>
                 <div id="dispatchResultContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 購入先管理ページ -->
+    <div id="suppliersPage" class="page-content">
+        <div class="page-header">
+            <h2>🏢 購入先管理</h2>
+            <p>購入先の登録・編集・削除を行います</p>
+        </div>
+
+        <div class="subtab-group" id="suppliersSubtabs">
+            <button class="subtab-btn active" data-detail-tab="list">📋 購入先一覧</button>
+            <button class="subtab-btn" data-detail-tab="add">➕ 新規追加</button>
+        </div>
+
+        <!-- 購入先一覧 -->
+        <div id="suppliersListSection" class="detail-tab-content" data-detail-tab-content="list">
+            <div class="form-container">
+                <h3 class="section-title">登録済み購入先</h3>
+                <div id="suppliersList" class="list-container">
+                    <p class="loading">読み込み中...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 新規追加 -->
+        <div id="suppliersAddSection" class="detail-tab-content" data-detail-tab-content="add" hidden>
+            <div class="form-container">
+                <h3 class="section-title">購入先情報の入力</h3>
+
+                <div class="filter-group">
+                    <label for="supplierName">購入先名 *</label>
+                    <input type="text" id="supplierName" class="input-field" placeholder="例: 株式会社サンプル商事" required>
+                </div>
+
+                <div class="filter-group">
+                    <label for="supplierContact">連絡先</label>
+                    <input type="text" id="supplierContact" class="input-field" placeholder="担当者名・電話番号など">
+                </div>
+
+                <div class="filter-group">
+                    <label for="supplierEmail">メールアドレス</label>
+                    <input type="email" id="supplierEmail" class="input-field" placeholder="order@example.com">
+                </div>
+
+                <div class="filter-group">
+                    <label for="supplierAddress">住所</label>
+                    <textarea id="supplierAddress" class="input-field" rows="3" placeholder="住所（任意）"></textarea>
+                </div>
+
+                <div class="filter-group">
+                    <label for="supplierNote">備考</label>
+                    <textarea id="supplierNote" class="input-field" rows="3" placeholder="備考（任意）"></textarea>
+                </div>
+
+                <button id="supplierSubmitBtn" class="btn btn-primary primary-action" type="button">
+                    💾 購入先を登録する
+                </button>
             </div>
         </div>
     </div>
