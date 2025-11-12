@@ -626,6 +626,7 @@ async function submitOutbound() {
     const code = document.getElementById('outboundItemInfo').dataset.itemCode;
     const quantity = parseInt(document.getElementById('outboundQuantity').value);
     const person = document.getElementById('outboundPerson').value.trim();
+    const department = document.getElementById('outboundDepartment').value.trim();
     const note = document.getElementById('outboundNote').value.trim();
 
     if (!quantity || quantity <= 0) {
@@ -648,6 +649,7 @@ async function submitOutbound() {
                 code: code,
                 quantity: quantity,
                 person: person,
+                department: department,
                 note: note
             }),
         });
@@ -655,12 +657,13 @@ async function submitOutbound() {
         const data = await response.json();
 
         if (data.success) {
-            showSuccess(`${code} を ${quantity} 個出庫しました（出庫者: ${person}）`);
+            showSuccess(`${code} を ${quantity} 個出庫しました（出庫者: ${person}${department ? ' / ' + department : ''}）`);
 
             // フォームをクリア
             document.getElementById('outboundQrCode').value = '';
             document.getElementById('outboundQuantity').value = '';
             document.getElementById('outboundPerson').value = '';
+            document.getElementById('outboundDepartment').value = '';
             document.getElementById('outboundNote').value = '';
             document.getElementById('outboundItemInfo').style.display = 'none';
 
@@ -680,6 +683,7 @@ async function submitInbound() {
     const code = document.getElementById('inboundItemInfo').dataset.itemCode;
     const quantity = parseInt(document.getElementById('inboundQuantity').value);
     const person = document.getElementById('inboundPerson').value.trim();
+    const department = document.getElementById('inboundDepartment').value.trim();
     const note = document.getElementById('inboundNote').value.trim();
 
     if (!quantity || quantity <= 0) {
@@ -702,6 +706,7 @@ async function submitInbound() {
                 code: code,
                 quantity: quantity,
                 person: person,
+                department: department,
                 note: note,
                 inbound_type: '手動'
             }),
@@ -710,12 +715,13 @@ async function submitInbound() {
         const data = await response.json();
 
         if (data.success) {
-            showSuccess(`${code} を ${quantity} 個入庫しました（入庫者: ${person}）`);
+            showSuccess(`${code} を ${quantity} 個入庫しました（入庫者: ${person}${department ? ' / ' + department : ''}）`);
 
             // フォームをクリア
             document.getElementById('inboundQrCode').value = '';
             document.getElementById('inboundQuantity').value = '';
             document.getElementById('inboundPerson').value = '';
+            document.getElementById('inboundDepartment').value = '';
             document.getElementById('inboundNote').value = '';
             document.getElementById('inboundItemInfo').style.display = 'none';
 

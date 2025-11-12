@@ -194,10 +194,10 @@ def create_outbound():
         db.execute_update(
             """
             INSERT INTO outbound_history (
-                consumable_id, code, name, quantity, employee_name,
+                consumable_id, code, name, quantity, employee_name, employee_department,
                 unit_price, total_amount, note, outbound_date
             ) VALUES (
-                :consumable_id, :code, :name, :quantity, :employee_name,
+                :consumable_id, :code, :name, :quantity, :employee_name, :employee_department,
                 :unit_price, :total_amount, :note, NOW()
             )
             """,
@@ -207,6 +207,7 @@ def create_outbound():
                 "name": item["name"],
                 "quantity": quantity,
                 "employee_name": person,
+                "employee_department": data.get("department", ""),
                 "unit_price": unit_price,
                 "total_amount": total_amount,
                 "note": data.get("note", ""),
@@ -260,10 +261,10 @@ def create_inbound():
         db.execute_update(
             """
             INSERT INTO inbound_history (
-                consumable_id, code, name, quantity, employee_name,
+                consumable_id, code, name, quantity, employee_name, employee_department,
                 unit_price, total_amount, note, inbound_type, inbound_date
             ) VALUES (
-                :consumable_id, :code, :name, :quantity, :employee_name,
+                :consumable_id, :code, :name, :quantity, :employee_name, :employee_department,
                 :unit_price, :total_amount, :note, :inbound_type, NOW()
             )
             """,
@@ -273,6 +274,7 @@ def create_inbound():
                 "name": item["name"],
                 "quantity": quantity,
                 "employee_name": person,
+                "employee_department": data.get("department", ""),
                 "unit_price": unit_price,
                 "total_amount": total_amount,
                 "note": data.get("note", ""),
