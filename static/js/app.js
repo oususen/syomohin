@@ -92,6 +92,7 @@ function setupEventListeners() {
         currentQrTarget = 'orderQrCode';
         openCamera();
     });
+    document.getElementById('orderEmployeeCode').addEventListener('input', debounce(() => loadEmployeeByCode('order'), 300));
     document.getElementById('submitOrder').addEventListener('click', submitOrder);
 
     // 発注状態リストページ
@@ -558,16 +559,48 @@ async function searchItemByName(type) {
 
 // 従業員コードから従業員情報を取得
 async function loadEmployeeByCode(type) {
-    const employeeCodeId = type === 'outbound' ? 'outboundEmployeeCode' : 'inboundEmployeeCode';
-    const employeeCode = document.getElementById(employeeCodeId).value.trim();
+    const config = {
+        outbound: {
+            code: 'outboundEmployeeCode',
+            person: 'outboundPerson',
+            department: 'outboundDepartment',
+        },
+        inbound: {
+            code: 'inboundEmployeeCode',
+            person: 'inboundPerson',
+            department: 'inboundDepartment',
+        },
+        order: {
+            code: 'orderEmployeeCode',
+            person: 'orderRequester',
+            department: null,
+        },
+    };
 
-    const personId = type === 'outbound' ? 'outboundPerson' : 'inboundPerson';
-    const departmentId = type === 'outbound' ? 'outboundDepartment' : 'inboundDepartment';
+    const target = config[type];
+    if (!target) {
+        return;
+    }
+
+    const codeInput = document.getElementById(target.code);
+    const personInput = document.getElementById(target.person);
+    const departmentInput = target.department ? document.getElementById(target.department) : null;
+
+    if (!codeInput || !personInput) {
+        return;
+    }
+
+    const employeeCode = codeInput.value.trim();
+
+    const clearFields = () => {
+        personInput.value = '';
+        if (departmentInput) {
+            departmentInput.value = '';
+        }
+    };
 
     if (!employeeCode) {
-        // コードが空の場合はフィールドをクリア
-        document.getElementById(personId).value = '';
-        document.getElementById(departmentId).value = '';
+        clearFields();
         return;
     }
 
@@ -576,19 +609,17 @@ async function loadEmployeeByCode(type) {
         const data = await response.json();
 
         if (data.success) {
-            // 従業員情報を自動入力
-            document.getElementById(personId).value = data.data.name || '';
-            document.getElementById(departmentId).value = data.data.department || '';
+            personInput.value = data.data.name || '';
+            if (departmentInput) {
+                departmentInput.value = data.data.department || '';
+            }
         } else {
-            // 従業員が見つからない場合はフィールドをクリア
-            document.getElementById(personId).value = '';
-            document.getElementById(departmentId).value = '';
+            clearFields();
             showError('従業員が見つかりません');
         }
     } catch (error) {
         console.error('従業員情報の取得に失敗:', error);
-        document.getElementById(personId).value = '';
-        document.getElementById(departmentId).value = '';
+        clearFields();
     }
 }
 
@@ -848,6 +879,7 @@ async function submitOrder() {
             // フォームをクリア
             document.getElementById('orderQrCode').value = '';
             document.getElementById('orderQuantity').value = '';
+            document.getElementById('orderEmployeeCode').value = '';
             document.getElementById('orderRequester').value = '';
             document.getElementById('orderNote').value = '';
             document.getElementById('orderItemInfo').style.display = 'none';
