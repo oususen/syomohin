@@ -23,6 +23,7 @@
         <button class="nav-btn" data-page="order-list">発注状態</button>
         <button class="nav-btn" data-page="dispatch">発注</button>
         <button class="nav-btn" data-page="suppliers">購入先管理</button>
+        <button class="nav-btn" data-page="employees">👤 従業員管理</button>
     </nav>
 
     <!-- 在庫一覧ページ -->
@@ -710,6 +711,127 @@
                         💾 更新する
                     </button>
                     <button id="supplierCancelEditBtn" class="btn btn-outline" type="button">
+                        ❌ キャンセル
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 従業員管理ページ -->
+    <div id="employeesPage" class="page-content">
+        <div class="page-header">
+            <h2>従業員管理</h2>
+            <p>従業員情報の登録・編集・削除</p>
+        </div>
+
+        <!-- サブタブ -->
+        <div class="subtab-group" id="employeesSubtabs">
+            <button class="subtab-btn active" data-detail-tab="list">👥 従業員一覧</button>
+            <button class="subtab-btn" data-detail-tab="add">➕ 新規追加</button>
+            <button class="subtab-btn" data-detail-tab="edit" style="display: none;">✏️ 編集</button>
+        </div>
+
+        <!-- 従業員一覧 -->
+        <div id="employeesListSection" class="detail-tab-content" data-detail-tab-content="list">
+            <div id="employeesList" class="form-container">
+                <p class="loading">読み込み中...</p>
+            </div>
+        </div>
+
+        <!-- 新規追加 -->
+        <div id="employeesAddSection" class="detail-tab-content" data-detail-tab-content="add" hidden>
+            <div class="form-container">
+                <h3 class="section-title">新規従業員の登録</h3>
+
+                <div class="filter-group">
+                    <label for="employeeCode">従業員コード *</label>
+                    <input type="text" id="employeeCode" class="input-field" placeholder="例: EMP001" required>
+                </div>
+
+                <div class="filter-group">
+                    <label for="employeeName">氏名 *</label>
+                    <input type="text" id="employeeName" class="input-field" placeholder="例: 山田太郎" required>
+                </div>
+
+                <div class="filter-group">
+                    <label for="employeeDepartment">部署</label>
+                    <input type="text" id="employeeDepartment" class="input-field" placeholder="例: 総務部">
+                </div>
+
+                <div class="filter-group">
+                    <label for="employeeEmail">メールアドレス</label>
+                    <input type="email" id="employeeEmail" class="input-field" placeholder="example@company.com">
+                </div>
+
+                <div class="filter-group">
+                    <label for="employeePassword">パスワード</label>
+                    <input type="password" id="employeePassword" class="input-field" placeholder="パスワード（任意）">
+                </div>
+
+                <div class="filter-group">
+                    <label for="employeeRole">役職</label>
+                    <select id="employeeRole" class="input-field">
+                        <option value="一般">一般</option>
+                        <option value="管理者">管理者</option>
+                        <option value="マネージャー">マネージャー</option>
+                    </select>
+                </div>
+
+                <button id="employeeSubmitBtn" class="btn btn-primary primary-action" type="button">
+                    💾 従業員を登録する
+                </button>
+            </div>
+        </div>
+
+        <!-- 編集 -->
+        <div id="employeesEditSection" class="detail-tab-content" data-detail-tab-content="edit" hidden>
+            <div class="form-container">
+                <h3 class="section-title">従業員情報の編集</h3>
+
+                <input type="hidden" id="editEmployeeId">
+
+                <div class="filter-group">
+                    <label for="editEmployeeCode">従業員コード *</label>
+                    <input type="text" id="editEmployeeCode" class="input-field" readonly style="background-color: #f5f5f5;">
+                    <small class="import-hint">コードは変更できません</small>
+                </div>
+
+                <div class="filter-group">
+                    <label for="editEmployeeName">氏名 *</label>
+                    <input type="text" id="editEmployeeName" class="input-field" placeholder="例: 山田太郎" required>
+                </div>
+
+                <div class="filter-group">
+                    <label for="editEmployeeDepartment">部署</label>
+                    <input type="text" id="editEmployeeDepartment" class="input-field" placeholder="例: 総務部">
+                </div>
+
+                <div class="filter-group">
+                    <label for="editEmployeeEmail">メールアドレス</label>
+                    <input type="email" id="editEmployeeEmail" class="input-field" placeholder="example@company.com">
+                </div>
+
+                <div class="filter-group">
+                    <label for="editEmployeePassword">パスワード</label>
+                    <input type="password" id="editEmployeePassword" class="input-field" placeholder="変更する場合のみ入力">
+                    <small class="import-hint">空欄の場合はパスワードを変更しません</small>
+                </div>
+
+                <div class="filter-group">
+                    <label for="editEmployeeRole">役職</label>
+                    <select id="editEmployeeRole" class="input-field">
+                        <option value="一般">一般</option>
+                        <option value="管理者">管理者</option>
+                        <option value="マネージャー">マネージャー</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 12px;">
+                    <button id="employeeUpdateBtn" class="btn btn-primary primary-action" type="button">
+                        💾 更新する
+                    </button>
+                    <button id="employeeCancelEditBtn" class="btn btn-outline" type="button">
                         ❌ キャンセル
                     </button>
                 </div>

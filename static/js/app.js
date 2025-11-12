@@ -144,7 +144,8 @@ function switchPage(page) {
         'order': 'orderPage',
         'order-list': 'orderListPage',
         'dispatch': 'dispatchPage',
-        'suppliers': 'suppliersPage'
+        'suppliers': 'suppliersPage',
+        'employees': 'employeesPage'
     };
 
     document.getElementById(pageMap[page]).classList.add('active');
@@ -158,7 +159,8 @@ function switchPage(page) {
         'order': '📝 注文依頼',
         'order-list': '📋 発注状態',
         'dispatch': '📮 発注',
-        'suppliers': '🏢 購入先管理'
+        'suppliers': '🏢 購入先管理',
+        'employees': '👤 従業員管理'
     };
     document.getElementById('pageTitle').textContent = titles[page];
 
@@ -171,6 +173,8 @@ function switchPage(page) {
         initDispatchPage();
     } else if (page === 'suppliers') {
         initSuppliersPage();
+    } else if (page === 'employees') {
+        initEmployeesPage();
     }
 }
 
@@ -2406,6 +2410,299 @@ async function deleteSupplier(id, name) {
         }
     } catch (error) {
         console.error('supplier delete error:', error);
+        showError('削除に失敗しました');
+    }
+}
+
+// ========================================
+// 従業員管理ページ
+// ========================================
+
+let currentEmployeesSubtab = 'list';
+let employeesPageEventsBound = false;
+
+function initEmployeesPage() {
+    if (!employeesPageEventsBound) {
+        setupEmployeesSubtabs();
+
+        const submitBtn = document.getElementById('employeeSubmitBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', submitEmployeeForm);
+        }
+
+        const updateBtn = document.getElementById('employeeUpdateBtn');
+        if (updateBtn) {
+            updateBtn.addEventListener('click', updateEmployee);
+        }
+
+        const cancelBtn = document.getElementById('employeeCancelEditBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', cancelEditEmployee);
+        }
+
+        employeesPageEventsBound = true;
+    }
+
+    if (currentEmployeesSubtab === 'list') {
+        loadEmployeesList();
+    }
+}
+
+function setupEmployeesSubtabs() {
+    const container = document.getElementById('employeesSubtabs');
+    if (!container) return;
+
+    container.querySelectorAll('.subtab-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            switchEmployeesSubtab(btn.dataset.detailTab);
+        });
+    });
+    switchEmployeesSubtab(currentEmployeesSubtab);
+}
+
+function switchEmployeesSubtab(target) {
+    if (!target) return;
+    currentEmployeesSubtab = target;
+
+    document.querySelectorAll('#employeesSubtabs .subtab-btn').forEach((btn) => {
+        btn.classList.toggle('active', btn.dataset.detailTab === target);
+    });
+
+    document.querySelectorAll('#employeesPage [data-detail-tab-content]').forEach((section) => {
+        const isTarget = section.dataset.detailTabContent === target;
+        section.hidden = !isTarget;
+    });
+
+    if (target === 'list') {
+        loadEmployeesList();
+    }
+}
+
+async function loadEmployeesList() {
+    const container = document.getElementById('employeesList');
+    if (!container) return;
+
+    container.innerHTML = '<p class="loading">読み込み中...</p>';
+
+    try {
+        const response = await fetch('/api/employees');
+        const data = await response.json();
+
+        if (data.success) {
+            renderEmployeesList(data.data || []);
+        } else {
+            container.innerHTML = `<p class="error">${data.error || '読み込みに失敗しました'}</p>`;
+        }
+    } catch (error) {
+        console.error('employees load error:', error);
+        container.innerHTML = '<p class="error">読み込みに失敗しました</p>';
+    }
+}
+
+function renderEmployeesList(employees) {
+    const container = document.getElementById('employeesList');
+    if (!container) return;
+
+    if (employees.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: #666;">従業員データがありません</p>';
+        return;
+    }
+
+    const html = employees.map(employee => {
+        const code = employee.code || '-';
+        const name = employee.name || '-';
+        const department = employee.department || '-';
+        const email = employee.email || '-';
+        const role = employee.role || '-';
+
+        return `
+            <div class="supplier-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; background: #fff;">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
+                    <div>
+                        <h4 style="margin: 0 0 4px 0; font-size: 18px; color: #333;">${name}</h4>
+                        <span style="font-size: 12px; color: #666;">コード: ${code}</span>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="btn btn-secondary" onclick="editEmployee(${employee.id})" style="padding: 6px 12px; font-size: 14px;">✏️ 編集</button>
+                        <button class="btn btn-outline" onclick="deleteEmployee(${employee.id}, '${name}')" style="padding: 6px 12px; font-size: 14px; color: #d32f2f; border-color: #d32f2f;">🗑️ 削除</button>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 14px; color: #666;">
+                    <strong>部署:</strong><span>${department}</span>
+                    <strong>メール:</strong><span>${email}</span>
+                    <strong>役職:</strong><span>${role}</span>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = html;
+}
+
+async function submitEmployeeForm() {
+    const code = document.getElementById('employeeCode').value.trim();
+    const name = document.getElementById('employeeName').value.trim();
+
+    if (!code || !name) {
+        showError('従業員コードと氏名は必須です');
+        return;
+    }
+
+    const data = {
+        code: code,
+        name: name,
+        department: document.getElementById('employeeDepartment').value.trim(),
+        email: document.getElementById('employeeEmail').value.trim(),
+        password: document.getElementById('employeePassword').value.trim(),
+        role: document.getElementById('employeeRole').value
+    };
+
+    try {
+        const response = await fetch('/api/employees', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('従業員を登録しました');
+            // フォームをクリア
+            document.getElementById('employeeCode').value = '';
+            document.getElementById('employeeName').value = '';
+            document.getElementById('employeeDepartment').value = '';
+            document.getElementById('employeeEmail').value = '';
+            document.getElementById('employeePassword').value = '';
+            document.getElementById('employeeRole').value = '一般';
+            // 一覧タブに切り替え
+            switchEmployeesSubtab('list');
+        } else {
+            showError(result.error || '登録に失敗しました');
+        }
+    } catch (error) {
+        console.error('employee register error:', error);
+        showError('登録に失敗しました');
+    }
+}
+
+async function editEmployee(id) {
+    try {
+        // 従業員データを取得
+        const response = await fetch(`/api/employees/${id}`);
+        const result = await response.json();
+
+        if (!result.success) {
+            showError(result.error || '従業員データの取得に失敗しました');
+            return;
+        }
+
+        const employee = result.data;
+
+        // フォームに値を設定
+        document.getElementById('editEmployeeId').value = employee.id;
+        document.getElementById('editEmployeeCode').value = employee.code || '';
+        document.getElementById('editEmployeeName').value = employee.name || '';
+        document.getElementById('editEmployeeDepartment').value = employee.department || '';
+        document.getElementById('editEmployeeEmail').value = employee.email || '';
+        document.getElementById('editEmployeePassword').value = '';
+        document.getElementById('editEmployeeRole').value = employee.role || '一般';
+
+        // 編集タブを表示して切り替え
+        const editTab = document.querySelector('#employeesSubtabs [data-detail-tab="edit"]');
+        if (editTab) {
+            editTab.style.display = 'inline-block';
+        }
+        switchEmployeesSubtab('edit');
+    } catch (error) {
+        console.error('employee edit load error:', error);
+        showError('従業員データの取得に失敗しました');
+    }
+}
+
+async function updateEmployee() {
+    const id = document.getElementById('editEmployeeId').value;
+    const name = document.getElementById('editEmployeeName').value.trim();
+
+    if (!name) {
+        showError('氏名は必須です');
+        return;
+    }
+
+    const data = {
+        name: name,
+        department: document.getElementById('editEmployeeDepartment').value.trim(),
+        email: document.getElementById('editEmployeeEmail').value.trim(),
+        role: document.getElementById('editEmployeeRole').value
+    };
+
+    // パスワードが入力されている場合のみ追加
+    const password = document.getElementById('editEmployeePassword').value.trim();
+    if (password) {
+        data.password = password;
+    }
+
+    try {
+        const response = await fetch(`/api/employees/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('従業員情報を更新しました');
+            // 編集タブを非表示
+            const editTab = document.querySelector('#employeesSubtabs [data-detail-tab="edit"]');
+            if (editTab) {
+                editTab.style.display = 'none';
+            }
+            // 一覧タブに切り替え
+            switchEmployeesSubtab('list');
+        } else {
+            showError(result.error || '更新に失敗しました');
+        }
+    } catch (error) {
+        console.error('employee update error:', error);
+        showError('更新に失敗しました');
+    }
+}
+
+function cancelEditEmployee() {
+    // 編集タブを非表示
+    const editTab = document.querySelector('#employeesSubtabs [data-detail-tab="edit"]');
+    if (editTab) {
+        editTab.style.display = 'none';
+    }
+    // 一覧タブに切り替え
+    switchEmployeesSubtab('list');
+}
+
+async function deleteEmployee(id, name) {
+    if (!confirm(`従業員「${name}」を削除しますか？`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/employees/${id}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('従業員を削除しました');
+            loadEmployeesList();
+        } else {
+            showError(result.error || '削除に失敗しました');
+        }
+    } catch (error) {
+        console.error('employee delete error:', error);
         showError('削除に失敗しました');
     }
 }

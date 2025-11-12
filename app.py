@@ -13,6 +13,7 @@ from routes.inventory import inventory_bp
 from routes.orders import orders_bp
 from routes.consumables import consumables_bp
 from routes.suppliers import suppliers_bp
+from routes.employees import employees_bp
 
 # Flaskアプリケーション初期化
 app = Flask(__name__)
@@ -32,6 +33,7 @@ app.register_blueprint(inventory_bp)
 app.register_blueprint(orders_bp)
 app.register_blueprint(consumables_bp)
 app.register_blueprint(suppliers_bp)
+app.register_blueprint(employees_bp)
 
 
 @app.route("/")
