@@ -710,3 +710,87 @@ body {
     font-size: 16px;
     margin-bottom: 12px;
 }
+
+/* 履歴テーブル */
+.table-container {
+    overflow-x: auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    margin-top: 20px;
+}
+
+.history-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 800px;
+}
+
+.history-table thead {
+    background: #009688;
+    color: white;
+}
+
+.history-table th {
+    padding: 12px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    white-space: nowrap;
+}
+
+.history-table tbody tr {
+    border-bottom: 1px solid #e0e0e0;
+    transition: background-color 0.2s;
+}
+
+.history-table tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+.history-table td {
+    padding: 12px;
+    font-size: 14px;
+}
+
+.history-table td.loading {
+    text-align: center;
+    padding: 40px;
+    color: #999;
+}
+
+/* ナビゲーションメニューのレスポンシブ対応 */
+.nav-menu {
+    scrollbar-width: thin;
+    scrollbar-color: #009688 #f0f0f0;
+}
+
+.nav-menu::-webkit-scrollbar {
+    height: 4px;
+}
+
+.nav-menu::-webkit-scrollbar-track {
+    background: #f0f0f0;
+}
+
+.nav-menu::-webkit-scrollbar-thumb {
+    background: #009688;
+    border-radius: 2px;
+}
+
+/* タブが多い場合の対応 */
+@media (max-width: 1200px) {
+    .nav-btn {
+        min-width: 100px;
+        font-size: 13px;
+        padding: 14px 10px;
+    }
+}
+
+@media (max-width: 900px) {
+    .nav-btn {
+        min-width: 80px;
+        font-size: 12px;
+        padding: 12px 8px;
+    }
+}

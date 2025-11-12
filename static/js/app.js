@@ -8,6 +8,7 @@ let editGalleryCache = [];
 let editGalleryLoaded = false;
 let currentEditItemId = null;
 let currentQrTarget = null; // 現在QRコードを入力しようとしているフィールド
+const DEFAULT_SHORTAGE_STATUSES = ['欠品', '要注意', '在庫あり'];
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', () => {
@@ -78,6 +79,13 @@ function setupEventListeners() {
     document.getElementById('inboundEmployeeCode').addEventListener('input', debounce(() => loadEmployeeByCode('inbound'), 300));
     document.getElementById('submitInbound').addEventListener('click', submitInbound);
 
+    ['editStockQty', 'editSafetyStock'].forEach(id => {
+        const input = document.getElementById(id);
+        if (input) {
+            input.addEventListener('input', autoUpdateEditShortageStatus);
+        }
+    });
+
     // 注文依頼ページ
     document.getElementById('orderQrCode').addEventListener('input', () => loadItemInfo('order'));
     document.getElementById('orderScanBtn').addEventListener('click', () => {
@@ -143,6 +151,7 @@ function switchPage(page) {
         'register': 'registerPage',
         'outbound': 'outboundPage',
         'inbound': 'inboundPage',
+        'history': 'historyPage',
         'order': 'orderPage',
         'order-list': 'orderListPage',
         'dispatch': 'dispatchPage',
@@ -158,6 +167,7 @@ function switchPage(page) {
         'register': '🧰 消耗品管理',
         'outbound': '📤 出庫',
         'inbound': '📥 入庫',
+        'history': '📋 入出庫履歴',
         'order': '📝 注文依頼',
         'order-list': '📋 発注状態',
         'dispatch': '📮 発注',
@@ -177,6 +187,8 @@ function switchPage(page) {
         initSuppliersPage();
     } else if (page === 'employees') {
         initEmployeesPage();
+    } else if (page === 'history') {
+        initHistoryPage();
     }
 }
 
@@ -219,7 +231,8 @@ async function loadFilterOptions() {
             const editShortageSelect = document.getElementById('editShortageStatus');
             if (editShortageSelect) {
                 const selectableStatuses = (data.shortage_status || []).filter(status => status !== 'すべて');
-                const optionHtml = selectableStatuses.map(status =>
+                const mergedStatuses = Array.from(new Set([...DEFAULT_SHORTAGE_STATUSES, ...selectableStatuses]));
+                const optionHtml = mergedStatuses.map(status =>
                     `<option value="${status}">${status}</option>`
                 ).join('');
                 editShortageSelect.innerHTML = `<option value="">-- 在庫状態を選択 --</option>${optionHtml}`;
@@ -1548,6 +1561,54 @@ async function handleEditCardSelect(index) {
     await loadEditDetail(item);
 }
 
+function toSafeInt(value) {
+    const parsed = parseInt(value, 10);
+    return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function calculateShortageStatusLabel(stock, safety) {
+    const stockVal = Number.isFinite(stock) ? stock : 0;
+    const safetyVal = Number.isFinite(safety) ? safety : 0;
+    if (stockVal <= 0) return '欠品';
+    if (stockVal <= safetyVal) return '要注意';
+    return '在庫あり';
+}
+
+function ensureShortageOption(select, value) {
+    if (!select || !value) return;
+    const exists = Array.from(select.options).some(opt => opt.value === value);
+    if (!exists) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        select.appendChild(option);
+    }
+}
+
+function setEditShortageStatusValue(value) {
+    const select = document.getElementById('editShortageStatus');
+    if (!select) return;
+    if (value) {
+        ensureShortageOption(select, value);
+        select.value = value;
+    } else {
+        select.value = '';
+    }
+}
+
+function autoUpdateEditShortageStatus() {
+    const stockInput = document.getElementById('editStockQty');
+    const safetyInput = document.getElementById('editSafetyStock');
+    if (!stockInput || !safetyInput) {
+        return;
+    }
+    const status = calculateShortageStatusLabel(
+        toSafeInt(stockInput.value),
+        toSafeInt(safetyInput.value)
+    );
+    setEditShortageStatusValue(status);
+}
+
 function updateEditPreview(item) {
     const preview = document.getElementById('editItemPreview');
     if (!preview) return;
@@ -1617,23 +1678,11 @@ function populateEditForm(detail) {
     setValue('editOrderUnit', detail.order_unit);
     setValue('editStorageLocation', detail.storage_location);
     setValue('editNote', detail.note);
-    setValue('editShortageStatus', detail.shortage_status);
+    setEditShortageStatusValue(detail.shortage_status);
 
     const supplierSelect = document.getElementById('editSupplier');
     if (supplierSelect) {
         supplierSelect.value = detail.supplier_id || '';
-    }
-
-    const shortageSelect = document.getElementById('editShortageStatus');
-    if (shortageSelect && detail.shortage_status) {
-        const targetValue = detail.shortage_status;
-        if (shortageSelect.value !== targetValue) {
-            const option = document.createElement('option');
-            option.value = targetValue;
-            option.textContent = targetValue;
-            shortageSelect.appendChild(option);
-            shortageSelect.value = targetValue;
-        }
     }
 
     // 既存の画像を表示
@@ -2845,4 +2894,111 @@ function downloadEmployeesCsvTemplate() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
+}
+
+// 入出庫履歴ページ
+function initHistoryPage() {
+    // 部署一覧を読み込み
+    loadHistoryDepartments();
+
+    // イベントリスナーを設定（初回のみ）
+    if (!window.historyPageInitialized) {
+        document.getElementById('searchHistory').addEventListener('click', loadHistory);
+        document.getElementById('historyType').addEventListener('change', loadHistory);
+        document.getElementById('historyDepartment').addEventListener('change', loadHistory);
+        document.getElementById('historySearch').addEventListener('input', debounce(loadHistory, 300));
+        window.historyPageInitialized = true;
+    }
+
+    // 履歴を読み込み
+    loadHistory();
+}
+
+async function loadHistoryDepartments() {
+    try {
+        const response = await fetch('/api/history/departments');
+        const data = await response.json();
+
+        if (data.success && data.departments) {
+            const select = document.getElementById('historyDepartment');
+            const currentValue = select.value;
+
+            select.innerHTML = '<option value="">すべて</option>';
+            data.departments.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept;
+                option.textContent = dept;
+                select.appendChild(option);
+            });
+
+            // 以前の選択を復元
+            if (currentValue) {
+                select.value = currentValue;
+            }
+        }
+    } catch (error) {
+        console.error('部署一覧の取得に失敗:', error);
+    }
+}
+
+async function loadHistory() {
+    const type = document.getElementById('historyType').value;
+    const department = document.getElementById('historyDepartment').value;
+    const startDate = document.getElementById('historyStartDate').value;
+    const endDate = document.getElementById('historyEndDate').value;
+    const searchText = document.getElementById('historySearch').value.trim();
+
+    const params = new URLSearchParams();
+    if (type !== 'all') params.append('type', type);
+    if (department) params.append('department', department);
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+    if (searchText) params.append('search_text', searchText);
+
+    try {
+        const response = await fetch(`/api/history?${params.toString()}`);
+        const data = await response.json();
+
+        if (data.success) {
+            displayHistory(data.data);
+            document.getElementById('historyCount').textContent = `表示件数: ${data.count}`;
+        } else {
+            showError(data.error || '履歴の取得に失敗しました');
+        }
+    } catch (error) {
+        console.error('履歴取得エラー:', error);
+        showError('履歴の取得に失敗しました');
+    }
+}
+
+function displayHistory(history) {
+    const tbody = document.getElementById('historyTableBody');
+
+    if (!history || history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="loading">データがありません</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = history.map(item => {
+        const date = item.date ? new Date(item.date).toLocaleString('ja-JP') : '-';
+        const type = item.type || '-';
+        const typeBadge = type === '出庫'
+            ? '<span style="background: #ff6b6b; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">出庫</span>'
+            : '<span style="background: #51cf66; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.85em;">入庫</span>';
+
+        return `
+            <tr>
+                <td>${typeBadge}</td>
+                <td>${date}</td>
+                <td>${item.code || '-'}</td>
+                <td>${item.name || '-'}</td>
+                <td>${item.quantity || 0}</td>
+                <td>${item.employee_name || '-'}</td>
+                <td>${item.employee_department || '-'}</td>
+                <td>¥${(item.unit_price || 0).toLocaleString()}</td>
+                <td>¥${(item.total_amount || 0).toLocaleString()}</td>
+                <td>${item.note || '-'}</td>
+            </tr>
+        `;
+    }).join('');
 }

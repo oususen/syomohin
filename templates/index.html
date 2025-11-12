@@ -19,11 +19,12 @@
         <button class="nav-btn" data-page="register"> 消耗品管理</button>
         <button class="nav-btn" data-page="outbound">出庫</button>
         <button class="nav-btn" data-page="inbound">入庫</button>
+        <button class="nav-btn" data-page="history">📋 履歴</button>
         <button class="nav-btn" data-page="order">注文依頼</button>
         <button class="nav-btn" data-page="order-list">発注状態</button>
         <button class="nav-btn" data-page="dispatch">発注</button>
         <button class="nav-btn" data-page="suppliers">購入先管理</button>
-        <button class="nav-btn" data-page="employees">👤 従業員管理</button>
+        <button class="nav-btn" data-page="employees">👤 従業員</button>
     </nav>
 
     <!-- 在庫一覧ページ -->
@@ -865,6 +866,81 @@
                     </button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- 入出庫履歴ページ -->
+    <div id="historyPage" class="page-content">
+        <div class="page-header">
+            <h2>📋 入出庫履歴</h2>
+            <p>出庫・入庫の履歴を確認できます。</p>
+        </div>
+
+        <div class="filter-container">
+            <h3>検索フィルター</h3>
+
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="historyType">履歴種別</label>
+                    <select id="historyType" class="input-field">
+                        <option value="all">すべて</option>
+                        <option value="outbound">出庫のみ</option>
+                        <option value="inbound">入庫のみ</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="historyDepartment">部署</label>
+                    <select id="historyDepartment" class="input-field">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="historyStartDate">開始日</label>
+                    <input type="date" id="historyStartDate" class="input-field">
+                </div>
+                <div class="filter-group">
+                    <label for="historyEndDate">終了日</label>
+                    <input type="date" id="historyEndDate" class="input-field">
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label for="historySearch">品名・担当者で検索</label>
+                <input type="text" id="historySearch" class="input-field" placeholder="品名または担当者名を入力">
+            </div>
+
+            <button id="searchHistory" class="btn btn-primary">🔍 検索</button>
+        </div>
+
+        <div class="count-info">
+            <p id="historyCount">表示件数: 0</p>
+        </div>
+
+        <div class="table-container">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>種別</th>
+                        <th>日時</th>
+                        <th>コード</th>
+                        <th>品名</th>
+                        <th>数量</th>
+                        <th>担当者</th>
+                        <th>部署</th>
+                        <th>単価</th>
+                        <th>合計金額</th>
+                        <th>備考</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <tr>
+                        <td colspan="10" class="loading">読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
 
