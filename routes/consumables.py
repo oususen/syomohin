@@ -296,9 +296,9 @@ def update_consumable(consumable_id):
         if "unit" in data:
             update_fields.append("unit = :unit")
             params["unit"] = data["unit"]
-        if "stock_qty" in data:
-            update_fields.append("stock_qty = :stock_qty")
-            params["stock_qty"] = int(data["stock_qty"])
+        if "stock_quantity" in data:
+            update_fields.append("stock_quantity = :stock_quantity")
+            params["stock_quantity"] = int(data["stock_quantity"])
         if "safety_stock" in data:
             update_fields.append("safety_stock = :safety_stock")
             params["safety_stock"] = int(data["safety_stock"])

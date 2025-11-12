@@ -1548,7 +1548,7 @@ function populateEditForm(detail) {
     setValue('editName', detail.name);
     setValue('editCategory', detail.category);
     setValue('editUnit', detail.unit);
-    setValue('editStockQty', detail.stock_qty);
+    setValue('editStockQty', detail.stock_quantity);
     setValue('editSafetyStock', detail.safety_stock);
     setValue('editUnitPrice', detail.unit_price);
     setValue('editOrderUnit', detail.order_unit);
@@ -1600,7 +1600,7 @@ async function submitEditForm() {
     formData.append('name', document.getElementById('editName').value.trim());
     formData.append('category', document.getElementById('editCategory').value.trim());
     formData.append('unit', document.getElementById('editUnit').value.trim());
-    formData.append('stock_qty', parseInt(document.getElementById('editStockQty').value, 10) || 0);
+    formData.append('stock_quantity', parseInt(document.getElementById('editStockQty').value, 10) || 0);
     formData.append('safety_stock', parseInt(document.getElementById('editSafetyStock').value, 10) || 0);
     formData.append('unit_price', parseFloat(document.getElementById('editUnitPrice').value) || 0);
     formData.append('order_unit', parseInt(document.getElementById('editOrderUnit').value, 10) || 1);
