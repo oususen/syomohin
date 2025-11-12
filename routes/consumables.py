@@ -284,6 +284,9 @@ def update_consumable(consumable_id):
         update_fields = []
         params = {"id": consumable_id}
 
+        if "order_code" in data:
+            update_fields.append("order_code = :order_code")
+            params["order_code"] = data["order_code"]
         if "name" in data:
             update_fields.append("name = :name")
             params["name"] = data["name"]
@@ -293,6 +296,9 @@ def update_consumable(consumable_id):
         if "unit" in data:
             update_fields.append("unit = :unit")
             params["unit"] = data["unit"]
+        if "stock_qty" in data:
+            update_fields.append("stock_qty = :stock_qty")
+            params["stock_qty"] = int(data["stock_qty"])
         if "safety_stock" in data:
             update_fields.append("safety_stock = :safety_stock")
             params["safety_stock"] = int(data["safety_stock"])

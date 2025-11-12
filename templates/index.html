@@ -203,34 +203,51 @@
                 <div id="editItemPreview" class="quick-item-card" hidden></div>
                 <div id="editFormFields" hidden>
                     <div class="filter-group">
-                        <label for="editName">品名</label>
-                        <input type="text" id="editName" class="input-field" placeholder="品名">
+                        <label for="editCode">コード *</label>
+                        <input type="text" id="editCode" class="input-field" placeholder="コード" readonly style="background-color: #f5f5f5;">
+                        <small class="import-hint">コードは変更できません</small>
+                    </div>
+                    <div class="filter-group">
+                        <label for="editOrderCode">発注コード</label>
+                        <input type="text" id="editOrderCode" class="input-field" placeholder="任意で設定できます">
+                    </div>
+                    <div class="filter-group">
+                        <label for="editName">品名 *</label>
+                        <input type="text" id="editName" class="input-field" placeholder="品名を入力" required>
                     </div>
                     <div class="filter-group">
                         <label for="editCategory">カテゴリ</label>
-                        <input type="text" id="editCategory" class="input-field" placeholder="カテゴリ">
+                        <input type="text" id="editCategory" class="input-field" placeholder="例: 事務用品">
                     </div>
                     <div class="filter-group">
                         <label for="editUnit">単位</label>
                         <input type="text" id="editUnit" class="input-field" placeholder="個 / 箱など">
                     </div>
                     <div class="filter-group">
+                        <label for="editStockQty">在庫数</label>
+                        <input type="number" id="editStockQty" class="input-field" placeholder="0" min="0">
+                    </div>
+                    <div class="filter-group">
                         <label for="editSafetyStock">安全在庫</label>
-                        <input type="number" id="editSafetyStock" class="input-field" min="0">
+                        <input type="number" id="editSafetyStock" class="input-field" placeholder="0" min="0">
                     </div>
                     <div class="filter-group">
                         <label for="editUnitPrice">単価</label>
-                        <input type="number" id="editUnitPrice" class="input-field" min="0">
+                        <input type="number" id="editUnitPrice" class="input-field" placeholder="0" min="0">
                     </div>
                     <div class="filter-group">
                         <label for="editOrderUnit">発注単位</label>
-                        <input type="number" id="editOrderUnit" class="input-field" min="1">
+                        <input type="number" id="editOrderUnit" class="input-field" placeholder="1" min="1">
                     </div>
                     <div class="filter-group">
                         <label for="editSupplier">購入先</label>
                         <select id="editSupplier" class="input-field">
                             <option value="">-- 購入先を選択 --</option>
                         </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="editStorageLocation">保管場所</label>
+                        <input type="text" id="editStorageLocation" class="input-field" placeholder="倉庫・棚番号など">
                     </div>
                     <div class="filter-group image-upload-group">
                         <label for="editImage">商品画像</label>
@@ -245,12 +262,8 @@
                         <small class="import-hint">PNG/JPG/GIF 最大 5MB まで</small>
                     </div>
                     <div class="filter-group">
-                        <label for="editStorageLocation">保管場所</label>
-                        <input type="text" id="editStorageLocation" class="input-field" placeholder="倉庫・棚番号など">
-                    </div>
-                    <div class="filter-group">
                         <label for="editNote">備考</label>
-                        <textarea id="editNote" class="input-field" rows="3" placeholder="備考"></textarea>
+                        <textarea id="editNote" class="input-field" rows="3" placeholder="任意"></textarea>
                     </div>
                     <button id="editSubmitBtn" class="btn btn-primary primary-action" type="button">
                         💾 内容を更新する
