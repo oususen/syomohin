@@ -12,6 +12,7 @@ from PIL import Image
 from io import BytesIO
 
 from database_manager import get_db_manager
+from utils.stock_utils import calculate_shortage_status
 
 inventory_bp = Blueprint("inventory", __name__)
 
@@ -173,7 +174,7 @@ def create_outbound():
 
         # 消耗品情報を取得
         item_df = db.execute_query(
-            "SELECT id, name, stock_quantity, unit_price FROM consumables WHERE code = :code",
+            "SELECT id, name, stock_quantity, safety_stock, unit_price FROM consumables WHERE code = :code",
             {"code": code},
         )
 
@@ -183,6 +184,7 @@ def create_outbound():
         item = item_df.iloc[0]
         consumable_id = int(item["id"])
         current_stock = int(item["stock_quantity"])
+        safety_stock = int(item["safety_stock"]) if item["safety_stock"] is not None else 0
         unit_price = float(item["unit_price"]) if item["unit_price"] else 0
 
         # 在庫チェック
@@ -216,9 +218,10 @@ def create_outbound():
 
         # 在庫数を減らす
         new_stock = current_stock - quantity
+        new_status = calculate_shortage_status(new_stock, safety_stock)
         db.execute_update(
-            "UPDATE consumables SET stock_quantity = :stock WHERE id = :id",
-            {"stock": new_stock, "id": consumable_id},
+            "UPDATE consumables SET stock_quantity = :stock, shortage_status = :status WHERE id = :id",
+            {"stock": new_stock, "status": new_status, "id": consumable_id},
         )
 
         return jsonify({"success": True, "message": "出庫を記録しました", "new_stock": new_stock})
@@ -244,7 +247,7 @@ def create_inbound():
 
         # 消耗品情報を取得
         item_df = db.execute_query(
-            "SELECT id, name, stock_quantity, unit_price FROM consumables WHERE code = :code",
+            "SELECT id, name, stock_quantity, safety_stock, unit_price FROM consumables WHERE code = :code",
             {"code": code},
         )
 
@@ -254,6 +257,7 @@ def create_inbound():
         item = item_df.iloc[0]
         consumable_id = int(item["id"])
         current_stock = int(item["stock_quantity"])
+        safety_stock = int(item["safety_stock"]) if item["safety_stock"] is not None else 0
         unit_price = float(item["unit_price"]) if item["unit_price"] else 0
 
         # 入庫履歴を登録
@@ -284,9 +288,10 @@ def create_inbound():
 
         # 在庫数を増やす
         new_stock = current_stock + quantity
+        new_status = calculate_shortage_status(new_stock, safety_stock)
         db.execute_update(
-            "UPDATE consumables SET stock_quantity = :stock WHERE id = :id",
-            {"stock": new_stock, "id": consumable_id},
+            "UPDATE consumables SET stock_quantity = :stock, shortage_status = :status WHERE id = :id",
+            {"stock": new_stock, "status": new_status, "id": consumable_id},
         )
 
         return jsonify({"success": True, "message": "入庫を記録しました", "new_stock": new_stock})

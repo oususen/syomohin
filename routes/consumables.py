@@ -18,6 +18,7 @@ from config import (
 )
 from database_manager import get_db_manager
 from utils.csv_utils import resolve_csv_field, normalize_csv_row, parse_int, parse_float, resolve_supplier_id
+from utils.stock_utils import calculate_shortage_status
 
 consumables_bp = Blueprint("consumables", __name__)
 
@@ -122,7 +123,7 @@ def import_consumables_csv():
             order_status = normalized.get("order_status") or "未発注"
             shortage_status = normalized.get("shortage_status")
             if not shortage_status:
-                shortage_status = "在庫あり" if stock_quantity >= safety_stock else "要注意"
+                shortage_status = calculate_shortage_status(stock_quantity, safety_stock)
 
             params = {
                 "code": code,
@@ -235,6 +236,10 @@ def create_consumable():
                 file.save(str(save_path))
                 image_path = f"images/{safe_filename}"
 
+        stock_quantity = parse_int(data.get("stock_quantity"), 0)
+        safety_stock = parse_int(data.get("safety_stock"), 0)
+        shortage_status = calculate_shortage_status(stock_quantity, safety_stock)
+
         db.execute_update(
             CONSUMABLE_INSERT_SQL,
             {
@@ -243,8 +248,8 @@ def create_consumable():
                 "name": name,
                 "category": data.get("category", ""),
                 "unit": data.get("unit", "個"),
-                "stock_quantity": int(data.get("stock_quantity", 0)),
-                "safety_stock": int(data.get("safety_stock", 0)),
+                "stock_quantity": stock_quantity,
+                "safety_stock": safety_stock,
                 "unit_price": float(data.get("unit_price", 0)),
                 "order_unit": int(data.get("order_unit", 1)),
                 "supplier_id": int(data["supplier_id"]) if data.get("supplier_id") else None,
@@ -252,10 +257,9 @@ def create_consumable():
                 "image_path": image_path,
                 "note": data.get("note", ""),
                 "order_status": "未発注",
-                "shortage_status": "在庫あり",
+                "shortage_status": shortage_status,
             },
         )
-
         return jsonify({"success": True, "message": "消耗品を登録しました"})
 
     except Exception as e:
@@ -275,14 +279,20 @@ def update_consumable(consumable_id):
         db = get_db_manager()
 
         existing = db.execute_query(
-            "SELECT id FROM consumables WHERE id = :id",
+            "SELECT id, stock_quantity, safety_stock FROM consumables WHERE id = :id",
             {"id": consumable_id},
         )
         if existing.empty:
             return jsonify({"success": False, "error": "消耗品が見つかりません"}), 404
 
+        record = existing.iloc[0]
+        current_stock = parse_int(record.get("stock_quantity"), 0)
+        current_safety_stock = parse_int(record.get("safety_stock"), 0)
+
         update_fields = []
         params = {"id": consumable_id}
+        stock_updated = False
+        safety_updated = False
 
         if "order_code" in data:
             update_fields.append("order_code = :order_code")
@@ -298,10 +308,12 @@ def update_consumable(consumable_id):
             params["unit"] = data["unit"]
         if "stock_quantity" in data:
             update_fields.append("stock_quantity = :stock_quantity")
-            params["stock_quantity"] = int(data["stock_quantity"])
+            params["stock_quantity"] = parse_int(data["stock_quantity"], current_stock)
+            stock_updated = True
         if "safety_stock" in data:
             update_fields.append("safety_stock = :safety_stock")
-            params["safety_stock"] = int(data["safety_stock"])
+            params["safety_stock"] = parse_int(data["safety_stock"], current_safety_stock)
+            safety_updated = True
         if "unit_price" in data:
             update_fields.append("unit_price = :unit_price")
             params["unit_price"] = float(data["unit_price"])
@@ -323,6 +335,12 @@ def update_consumable(consumable_id):
                 shortage_value = shortage_value.strip()
             update_fields.append("shortage_status = :shortage_status")
             params["shortage_status"] = shortage_value
+        elif stock_updated or safety_updated:
+            new_stock_value = params.get("stock_quantity", current_stock)
+            new_safety_value = params.get("safety_stock", current_safety_stock)
+            auto_status = calculate_shortage_status(new_stock_value, new_safety_value)
+            update_fields.append("shortage_status = :shortage_status")
+            params["shortage_status"] = auto_status
 
         # 画像ファイルの処理
         if "image" in request.files:
