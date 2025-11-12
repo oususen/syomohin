@@ -317,6 +317,12 @@ def update_consumable(consumable_id):
         if "note" in data:
             update_fields.append("note = :note")
             params["note"] = data["note"]
+        if "shortage_status" in data:
+            shortage_value = data["shortage_status"]
+            if isinstance(shortage_value, str):
+                shortage_value = shortage_value.strip()
+            update_fields.append("shortage_status = :shortage_status")
+            params["shortage_status"] = shortage_value
 
         # 画像ファイルの処理
         if "image" in request.files:

@@ -250,6 +250,12 @@
                         <label for="editStorageLocation">保管場所</label>
                         <input type="text" id="editStorageLocation" class="input-field" placeholder="倉庫・棚番号など">
                     </div>
+                    <div class="filter-group">
+                        <label for="editShortageStatus">在庫状態</label>
+                        <select id="editShortageStatus" class="input-field">
+                            <option value="">-- 在庫状態を選択 --</option>
+                        </select>
+                    </div>
                     <div class="filter-group image-upload-group">
                         <label for="editImage">商品画像</label>
                         <input type="file" id="editImage" class="input-field file-input" accept="image/*">
@@ -303,6 +309,12 @@
                 <div class="filter-group">
                     <label for="outboundQuantity">出庫数量</label>
                     <input type="number" id="outboundQuantity" class="input-field" min="1" placeholder="出庫数量を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="outboundEmployeeCode">社員コード</label>
+                    <input type="text" id="outboundEmployeeCode" class="input-field" placeholder="社員コードを入力">
+                    <small class="import-hint">コードを入力すると自動で氏名・部署が入力されます</small>
                 </div>
 
                 <div class="filter-group">
@@ -363,6 +375,12 @@
                 <div class="filter-group">
                     <label for="inboundQuantity">入庫数量</label>
                     <input type="number" id="inboundQuantity" class="input-field" min="1" placeholder="入庫数量を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="inboundEmployeeCode">社員コード</label>
+                    <input type="text" id="inboundEmployeeCode" class="input-field" placeholder="社員コードを入力">
+                    <small class="import-hint">コードを入力すると自動で氏名・部署が入力されます</small>
                 </div>
 
                 <div class="filter-group">

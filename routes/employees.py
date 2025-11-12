@@ -44,6 +44,24 @@ def get_employee(employee_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@employees_bp.route("/api/employees/by-code/<string:employee_code>", methods=["GET"])
+def get_employee_by_code(employee_code):
+    """従業員コードで従業員を取得するAPI"""
+    try:
+        db = get_db_manager()
+        df = db.execute_query(
+            "SELECT id, code, name, department, email, role FROM employees WHERE code = :code",
+            {"code": employee_code},
+        )
+        if df.empty:
+            return jsonify({"success": False, "error": "従業員が見つかりません"}), 404
+
+        data = df.to_dict(orient="records")[0]
+        return jsonify({"success": True, "data": data})
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @employees_bp.route("/api/employees", methods=["POST"])
 def add_employee():
     """従業員を追加するAPI"""

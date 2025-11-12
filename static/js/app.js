@@ -56,6 +56,7 @@ function setupEventListeners() {
         openCamera();
     });
     document.getElementById('outboundSearchText').addEventListener('input', debounce(() => searchItemByName('outbound'), 300));
+    document.getElementById('outboundEmployeeCode').addEventListener('input', debounce(() => loadEmployeeByCode('outbound'), 300));
     document.getElementById('submitOutbound').addEventListener('click', submitOutbound);
 
     // 入庫ページ
@@ -74,6 +75,7 @@ function setupEventListeners() {
         openCamera();
     });
     document.getElementById('inboundSearchText').addEventListener('input', debounce(() => searchItemByName('inbound'), 300));
+    document.getElementById('inboundEmployeeCode').addEventListener('input', debounce(() => loadEmployeeByCode('inbound'), 300));
     document.getElementById('submitInbound').addEventListener('click', submitInbound);
 
     // 注文依頼ページ
@@ -201,14 +203,27 @@ async function loadFilterOptions() {
             filterOptions = data;
 
             const orderSelect = document.getElementById('orderStatus');
-            orderSelect.innerHTML = data.order_status.map(status =>
-                `<option value="${status}">${status}</option>`
-            ).join('');
+            if (orderSelect) {
+                orderSelect.innerHTML = data.order_status.map(status =>
+                    `<option value="${status}">${status}</option>`
+                ).join('');
+            }
 
             const shortageSelect = document.getElementById('shortageStatus');
-            shortageSelect.innerHTML = data.shortage_status.map(status =>
-                `<option value="${status}">${status}</option>`
-            ).join('');
+            if (shortageSelect) {
+                shortageSelect.innerHTML = data.shortage_status.map(status =>
+                    `<option value="${status}">${status}</option>`
+                ).join('');
+            }
+
+            const editShortageSelect = document.getElementById('editShortageStatus');
+            if (editShortageSelect) {
+                const selectableStatuses = (data.shortage_status || []).filter(status => status !== 'すべて');
+                const optionHtml = selectableStatuses.map(status =>
+                    `<option value="${status}">${status}</option>`
+                ).join('');
+                editShortageSelect.innerHTML = `<option value="">-- 在庫状態を選択 --</option>${optionHtml}`;
+            }
         }
     } catch (error) {
         console.error('フィルターオプションの取得に失敗:', error);
@@ -528,6 +543,42 @@ async function searchItemByName(type) {
     }
 }
 
+// 従業員コードから従業員情報を取得
+async function loadEmployeeByCode(type) {
+    const employeeCodeId = type === 'outbound' ? 'outboundEmployeeCode' : 'inboundEmployeeCode';
+    const employeeCode = document.getElementById(employeeCodeId).value.trim();
+
+    const personId = type === 'outbound' ? 'outboundPerson' : 'inboundPerson';
+    const departmentId = type === 'outbound' ? 'outboundDepartment' : 'inboundDepartment';
+
+    if (!employeeCode) {
+        // コードが空の場合はフィールドをクリア
+        document.getElementById(personId).value = '';
+        document.getElementById(departmentId).value = '';
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/employees/by-code/${encodeURIComponent(employeeCode)}`);
+        const data = await response.json();
+
+        if (data.success) {
+            // 従業員情報を自動入力
+            document.getElementById(personId).value = data.data.name || '';
+            document.getElementById(departmentId).value = data.data.department || '';
+        } else {
+            // 従業員が見つからない場合はフィールドをクリア
+            document.getElementById(personId).value = '';
+            document.getElementById(departmentId).value = '';
+            showError('従業員が見つかりません');
+        }
+    } catch (error) {
+        console.error('従業員情報の取得に失敗:', error);
+        document.getElementById(personId).value = '';
+        document.getElementById(departmentId).value = '';
+    }
+}
+
 // 検索結果キャッシュ
 let outboundSearchCache = [];
 let inboundSearchCache = [];
@@ -666,6 +717,7 @@ async function submitOutbound() {
             // フォームをクリア
             document.getElementById('outboundQrCode').value = '';
             document.getElementById('outboundQuantity').value = '';
+            document.getElementById('outboundEmployeeCode').value = '';
             document.getElementById('outboundPerson').value = '';
             document.getElementById('outboundDepartment').value = '';
             document.getElementById('outboundNote').value = '';
@@ -724,6 +776,7 @@ async function submitInbound() {
             // フォームをクリア
             document.getElementById('inboundQrCode').value = '';
             document.getElementById('inboundQuantity').value = '';
+            document.getElementById('inboundEmployeeCode').value = '';
             document.getElementById('inboundPerson').value = '';
             document.getElementById('inboundDepartment').value = '';
             document.getElementById('inboundNote').value = '';
@@ -1564,10 +1617,23 @@ function populateEditForm(detail) {
     setValue('editOrderUnit', detail.order_unit);
     setValue('editStorageLocation', detail.storage_location);
     setValue('editNote', detail.note);
+    setValue('editShortageStatus', detail.shortage_status);
 
     const supplierSelect = document.getElementById('editSupplier');
     if (supplierSelect) {
         supplierSelect.value = detail.supplier_id || '';
+    }
+
+    const shortageSelect = document.getElementById('editShortageStatus');
+    if (shortageSelect && detail.shortage_status) {
+        const targetValue = detail.shortage_status;
+        if (shortageSelect.value !== targetValue) {
+            const option = document.createElement('option');
+            option.value = targetValue;
+            option.textContent = targetValue;
+            shortageSelect.appendChild(option);
+            shortageSelect.value = targetValue;
+        }
     }
 
     // 既存の画像を表示
@@ -1622,6 +1688,10 @@ async function submitEditForm() {
 
     formData.append('storage_location', document.getElementById('editStorageLocation').value.trim());
     formData.append('note', document.getElementById('editNote').value.trim());
+    const shortageStatusSelect = document.getElementById('editShortageStatus');
+    if (shortageStatusSelect && shortageStatusSelect.value) {
+        formData.append('shortage_status', shortageStatusSelect.value.trim());
+    }
 
     // 画像ファイルがあれば追加
     if (imageFile) {
