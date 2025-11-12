@@ -1110,15 +1110,34 @@ async function loadSuppliers() {
         const result = await response.json();
 
         if (result.success) {
-            const select = document.getElementById('registerSupplier');
-            select.innerHTML = '<option value="">-- 購入先を選択 --</option>';
+            // 新規登録フォームの購入先ドロップダウンを更新
+            const registerSelect = document.getElementById('registerSupplier');
+            if (registerSelect) {
+                registerSelect.innerHTML = '<option value="">-- 購入先を選択 --</option>';
+                result.data.forEach(supplier => {
+                    const option = document.createElement('option');
+                    option.value = supplier.id;
+                    option.textContent = supplier.name;
+                    registerSelect.appendChild(option);
+                });
+            }
 
-            result.data.forEach(supplier => {
-                const option = document.createElement('option');
-                option.value = supplier.id;
-                option.textContent = supplier.name;
-                select.appendChild(option);
-            });
+            // 個別編集フォームの購入先ドロップダウンを更新
+            const editSelect = document.getElementById('editSupplier');
+            if (editSelect) {
+                const currentValue = editSelect.value; // 現在の選択値を保存
+                editSelect.innerHTML = '<option value="">-- 購入先を選択 --</option>';
+                result.data.forEach(supplier => {
+                    const option = document.createElement('option');
+                    option.value = supplier.id;
+                    option.textContent = supplier.name;
+                    editSelect.appendChild(option);
+                });
+                // 以前の選択値を復元
+                if (currentValue) {
+                    editSelect.value = currentValue;
+                }
+            }
         }
     } catch (error) {
         console.error('購入先の読み込みに失敗しました:', error);
