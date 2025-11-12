@@ -781,6 +781,17 @@
                 <button id="employeeSubmitBtn" class="btn btn-primary primary-action" type="button">
                     💾 従業員を登録する
                 </button>
+
+                <div class="import-section">
+                    <h3>CSVインポート</h3>
+                    <p class="import-note">テンプレートに沿って入力したファイルを読み込めます。</p>
+                    <input type="file" id="employeeCsvFileInput" class="input-field file-input" accept=".csv">
+                    <div class="import-actions">
+                        <button id="employeeCsvImportBtn" class="btn btn-outline" type="button">CSVを読み込む</button>
+                        <button id="employeeCsvTemplateDownloadBtn" class="btn btn-outline" type="button">テンプレートをダウンロード</button>
+                    </div>
+                    <small class="import-hint">必須列: コード / 氏名。UTF-8 で保存してください。</small>
+                </div>
             </div>
         </div>
 

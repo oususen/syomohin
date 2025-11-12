@@ -2440,6 +2440,18 @@ function initEmployeesPage() {
             cancelBtn.addEventListener('click', cancelEditEmployee);
         }
 
+        // CSVインポート
+        const csvImportBtn = document.getElementById('employeeCsvImportBtn');
+        if (csvImportBtn) {
+            csvImportBtn.addEventListener('click', importEmployeesCsv);
+        }
+
+        // CSVテンプレートダウンロード
+        const csvTemplateBtn = document.getElementById('employeeCsvTemplateDownloadBtn');
+        if (csvTemplateBtn) {
+            csvTemplateBtn.addEventListener('click', downloadEmployeesCsvTemplate);
+        }
+
         employeesPageEventsBound = true;
     }
 
@@ -2705,4 +2717,62 @@ async function deleteEmployee(id, name) {
         console.error('employee delete error:', error);
         showError('削除に失敗しました');
     }
+}
+
+async function importEmployeesCsv() {
+    const fileInput = document.getElementById('employeeCsvFileInput');
+    const file = fileInput?.files[0];
+
+    if (!file) {
+        showError('CSVファイルを選択してください');
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('/api/employees/import-csv', {
+            method: 'POST',
+            body: formData
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const summary = result.summary;
+            let message = result.message;
+
+            if (summary.errors && summary.errors.length > 0) {
+                message += `\n\nエラー:\n${summary.errors.slice(0, 5).join('\n')}`;
+                if (summary.errors.length > 5) {
+                    message += `\n... 他 ${summary.errors.length - 5} 件`;
+                }
+            }
+
+            showSuccess(message);
+            fileInput.value = '';
+            loadEmployeesList();
+        } else {
+            showError(result.error || 'CSVの取り込みに失敗しました');
+        }
+    } catch (error) {
+        console.error('CSV import error:', error);
+        showError('CSVの取り込みに失敗しました');
+    }
+}
+
+function downloadEmployeesCsvTemplate() {
+    // CSVテンプレートを生成
+    const template = 'コード,氏名,部署,メールアドレス,パスワード,役職\nEMP001,山田太郎,総務部,yamada@example.com,password123,一般\nEMP002,佐藤花子,営業部,sato@example.com,pass456,マネージャー';
+
+    // Blobとしてダウンロードリンクを作成
+    const blob = new Blob(['\uFEFF' + template], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = '従業員インポートテンプレート.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(link.href);
 }
