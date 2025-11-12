@@ -2110,6 +2110,16 @@ function initSuppliersPage() {
             submitBtn.addEventListener('click', submitSupplierForm);
         }
 
+        const updateBtn = document.getElementById('supplierUpdateBtn');
+        if (updateBtn) {
+            updateBtn.addEventListener('click', updateSupplier);
+        }
+
+        const cancelBtn = document.getElementById('supplierCancelEditBtn');
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', cancelEditSupplier);
+        }
+
         suppliersPageEventsBound = true;
     }
 
@@ -2258,8 +2268,92 @@ async function submitSupplierForm() {
 }
 
 async function editSupplier(id) {
-    // TODO: 編集機能を実装
-    showError('編集機能は未実装です');
+    try {
+        // 購入先データを取得
+        const response = await fetch(`/api/suppliers/${id}`);
+        const result = await response.json();
+
+        if (!result.success) {
+            showError(result.error || '購入先データの取得に失敗しました');
+            return;
+        }
+
+        const supplier = result.data;
+
+        // フォームに値を設定
+        document.getElementById('editSupplierId').value = supplier.id;
+        document.getElementById('editSupplierName').value = supplier.name || '';
+        document.getElementById('editSupplierContact').value = supplier.contact_person || '';
+        document.getElementById('editSupplierEmail').value = supplier.email || '';
+        document.getElementById('editSupplierAddress').value = supplier.address || '';
+        document.getElementById('editSupplierNote').value = supplier.note || '';
+
+        // 編集タブを表示して切り替え
+        const editTab = document.querySelector('#suppliersSubtabs [data-detail-tab="edit"]');
+        if (editTab) {
+            editTab.style.display = 'inline-block';
+        }
+        switchSuppliersSubtab('edit');
+    } catch (error) {
+        console.error('supplier edit load error:', error);
+        showError('購入先データの取得に失敗しました');
+    }
+}
+
+async function updateSupplier() {
+    const id = document.getElementById('editSupplierId').value;
+    const name = document.getElementById('editSupplierName').value.trim();
+
+    if (!name) {
+        showError('購入先名は必須です');
+        return;
+    }
+
+    const data = {
+        name: name,
+        contact_person: document.getElementById('editSupplierContact').value.trim(),
+        email: document.getElementById('editSupplierEmail').value.trim(),
+        address: document.getElementById('editSupplierAddress').value.trim(),
+        note: document.getElementById('editSupplierNote').value.trim()
+    };
+
+    try {
+        const response = await fetch(`/api/suppliers/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess('購入先を更新しました');
+            // 編集タブを非表示
+            const editTab = document.querySelector('#suppliersSubtabs [data-detail-tab="edit"]');
+            if (editTab) {
+                editTab.style.display = 'none';
+            }
+            // 一覧タブに切り替え
+            switchSuppliersSubtab('list');
+        } else {
+            showError(result.error || '更新に失敗しました');
+        }
+    } catch (error) {
+        console.error('supplier update error:', error);
+        showError('更新に失敗しました');
+    }
+}
+
+function cancelEditSupplier() {
+    // 編集タブを非表示
+    const editTab = document.querySelector('#suppliersSubtabs [data-detail-tab="edit"]');
+    if (editTab) {
+        editTab.style.display = 'none';
+    }
+    // 一覧タブに切り替え
+    switchSuppliersSubtab('list');
 }
 
 async function deleteSupplier(id, name) {

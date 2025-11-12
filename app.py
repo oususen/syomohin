@@ -16,6 +16,7 @@ from routes.suppliers import suppliers_bp
 
 # Flaskアプリケーション初期化
 app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False  # 日本語をそのまま出力
 CORS(app)
 
 # アップロード設定
@@ -70,10 +71,10 @@ if __name__ == "__main__":
     if cert_file.exists() and key_file.exists():
         app.run(
             host="0.0.0.0",
-            port=8501,
+            port=8504,
             debug=True,
             ssl_context=(str(cert_file), str(key_file)),
         )
     else:
         print("証明書が見つかりません。HTTPで起動します。")
-        app.run(host="0.0.0.0", port=8501, debug=True)
+        app.run(host="0.0.0.0", port=8504, debug=True)

@@ -63,7 +63,21 @@ class DatabaseManager:
 
         try:
             if params:
-                result = session.execute(text(query), params)
+                # タプルをリストに変換して辞書形式に
+                if isinstance(params, (list, tuple)):
+                    # プレースホルダーの数を数える
+                    placeholder_count = query.count('%s')
+                    if len(params) == placeholder_count:
+                        # パラメータを辞書形式に変換
+                        param_dict = {f'param{i}': v for i, v in enumerate(params)}
+                        # クエリのプレースホルダーを置換
+                        for i in range(len(params)):
+                            query = query.replace('%s', f':param{i}', 1)
+                        result = session.execute(text(query), param_dict)
+                    else:
+                        result = session.execute(text(query))
+                else:
+                    result = session.execute(text(query), params)
             else:
                 result = session.execute(text(query))
 
@@ -79,11 +93,13 @@ class DatabaseManager:
             return df
 
         except Exception as e:
-            print(f"❌ クエリ実行エラー: {e}")
-            print(f"Query: {query}")
-            print(f"Params: {params}")
+            try:
+                print(f"Query error: {e}")
+                print(f"Query: {query}")
+                print(f"Params: {params}")
+            except:
+                pass  # エンコーディングエラーを無視
             import traceback
-
             traceback.print_exc()
             return pd.DataFrame()
 
@@ -105,7 +121,21 @@ class DatabaseManager:
 
         try:
             if params:
-                result = session.execute(text(query), params)
+                # タプルをリストに変換して辞書形式に
+                if isinstance(params, (list, tuple)):
+                    # プレースホルダーの数を数える
+                    placeholder_count = query.count('%s')
+                    if len(params) == placeholder_count:
+                        # パラメータを辞書形式に変換
+                        param_dict = {f'param{i}': v for i, v in enumerate(params)}
+                        # クエリのプレースホルダーを置換
+                        for i in range(len(params)):
+                            query = query.replace('%s', f':param{i}', 1)
+                        result = session.execute(text(query), param_dict)
+                    else:
+                        result = session.execute(text(query))
+                else:
+                    result = session.execute(text(query), params)
             else:
                 result = session.execute(text(query))
 
@@ -114,11 +144,13 @@ class DatabaseManager:
 
         except Exception as e:
             session.rollback()
-            print(f"❌ 更新エラー: {e}")
-            print(f"Query: {query}")
-            print(f"Params: {params}")
+            try:
+                print(f"Update error: {e}")
+                print(f"Query: {query}")
+                print(f"Params: {params}")
+            except:
+                pass  # エンコーディングエラーを無視
             import traceback
-
             traceback.print_exc()
             return 0
 
