@@ -272,13 +272,6 @@ def update_consumable(consumable_id):
         else:
             data = request.form.to_dict()
 
-        # デバッグ用：受信したデータをログ出力
-        print(f"=== API Update Debug ===")
-        print(f"Consumable ID: {consumable_id}")
-        print(f"Received data: {data}")
-        print(f"Has image file: {'image' in request.files}")
-        print("=" * 30)
-
         db = get_db_manager()
 
         existing = db.execute_query(
@@ -341,16 +334,7 @@ def update_consumable(consumable_id):
             return jsonify({"success": False, "error": "更新する項目がありません"}), 400
 
         query = f"UPDATE consumables SET {', '.join(update_fields)} WHERE id = :id"
-
-        # デバッグ用：実行するクエリとパラメータをログ出力
-        print(f"=== Update Query ===")
-        print(f"Query: {query}")
-        print(f"Params: {params}")
-        print("=" * 30)
-
-        rows_affected = db.execute_update(query, params)
-
-        print(f"Updated rows: {rows_affected}")
+        db.execute_update(query, params)
 
         return jsonify({"success": True, "message": "消耗品情報を更新しました"})
 
