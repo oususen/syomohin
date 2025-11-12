@@ -746,21 +746,41 @@
     <!-- 従業員管理ページ -->
     <div id="employeesPage" class="page-content">
         <div class="page-header">
-            <h2>従業員管理</h2>
-            <p>従業員情報の登録・編集・削除</p>
+            <h2>👥 ユーザー管理</h2>
+            <p>ユーザーとロールを管理します</p>
         </div>
 
         <!-- サブタブ -->
         <div class="subtab-group" id="employeesSubtabs">
-            <button class="subtab-btn active" data-detail-tab="list">👥 従業員一覧</button>
-            <button class="subtab-btn" data-detail-tab="add">➕ 新規追加</button>
-            <button class="subtab-btn" data-detail-tab="edit" style="display: none;">✏️ 編集</button>
+            <button class="subtab-btn active" data-detail-tab="list">👤 ユーザー一覧</button>
+            <button class="subtab-btn" data-detail-tab="add">⭐ 新規登録</button>
+            <button class="subtab-btn" data-detail-tab="roles">📋 ロール管理</button>
+            <button class="subtab-btn" data-detail-tab="permissions">🔧 権限設定</button>
         </div>
 
         <!-- 従業員一覧 -->
         <div id="employeesListSection" class="detail-tab-content" data-detail-tab-content="list">
-            <div id="employeesList" class="form-container">
-                <p class="loading">読み込み中...</p>
+            <div class="table-container">
+                <table class="employees-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>従業員コード</th>
+                            <th>氏名</th>
+                            <th>メールアドレス</th>
+                            <th>部署</th>
+                            <th>状態</th>
+                            <th>権限</th>
+                            <th>作成日時</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeesTableBody">
+                        <tr>
+                            <td colspan="9" class="loading">読み込み中...</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
@@ -870,6 +890,143 @@
                     <button id="employeeCancelEditBtn" class="btn btn-outline" type="button">
                         ❌ キャンセル
                     </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ロール管理 -->
+        <div id="employeesRolesSection" class="detail-tab-content" data-detail-tab-content="roles" hidden>
+            <div class="form-container">
+                <h3 class="section-title">ロール管理</h3>
+                <p style="color: #666; margin-bottom: 20px;">システムで使用するロール（役割）を管理します。</p>
+
+                <div class="table-container">
+                    <table class="employees-table">
+                        <thead>
+                            <tr>
+                                <th>ロール名</th>
+                                <th>説明</th>
+                                <th>ユーザー数</th>
+                                <th>操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rolesTableBody">
+                            <tr>
+                                <td><strong>一般</strong></td>
+                                <td>一般ユーザー。基本的な操作が可能</td>
+                                <td id="roleCount_general">-</td>
+                                <td><span style="color: #999;">デフォルトロール</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>マネージャー</strong></td>
+                                <td>部署の管理者。承認権限あり</td>
+                                <td id="roleCount_manager">-</td>
+                                <td><span style="color: #999;">デフォルトロール</span></td>
+                            </tr>
+                            <tr>
+                                <td><strong>管理者</strong></td>
+                                <td>システム管理者。すべての操作が可能</td>
+                                <td id="roleCount_admin">-</td>
+                                <td><span style="color: #999;">デフォルトロール</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 20px; padding: 16px; background: #f5f5f5; border-radius: 8px;">
+                    <h4 style="margin-bottom: 12px;">ロールの説明</h4>
+                    <ul style="margin-left: 20px; line-height: 1.8;">
+                        <li><strong>一般：</strong>在庫の確認、出庫・入庫の記録が可能</li>
+                        <li><strong>マネージャー：</strong>一般権限 + 注文の承認、部署メンバーの管理</li>
+                        <li><strong>管理者：</strong>すべての機能 + ユーザー管理、システム設定</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- 権限設定 -->
+        <div id="employeesPermissionsSection" class="detail-tab-content" data-detail-tab-content="permissions" hidden>
+            <div class="form-container">
+                <h3 class="section-title">権限設定</h3>
+                <p style="color: #666; margin-bottom: 20px;">各ロールの機能別アクセス権限を設定します。</p>
+
+                <div class="table-container">
+                    <table class="employees-table">
+                        <thead>
+                            <tr>
+                                <th>機能</th>
+                                <th>一般</th>
+                                <th>マネージャー</th>
+                                <th>管理者</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>在庫確認</strong></td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                            </tr>
+                            <tr>
+                                <td><strong>出庫記録</strong></td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                            </tr>
+                            <tr>
+                                <td><strong>入庫記録</strong></td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                            </tr>
+                            <tr>
+                                <td><strong>注文依頼</strong></td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                            </tr>
+                            <tr>
+                                <td><strong>注文承認</strong></td>
+                                <td style="text-align: center;">❌</td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                            </tr>
+                            <tr>
+                                <td><strong>発注処理</strong></td>
+                                <td style="text-align: center;">❌</td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                            </tr>
+                            <tr>
+                                <td><strong>消耗品管理</strong></td>
+                                <td style="text-align: center;">❌</td>
+                                <td style="text-align: center;">✅</td>
+                                <td style="text-align: center;">✅</td>
+                            </tr>
+                            <tr>
+                                <td><strong>購入先管理</strong></td>
+                                <td style="text-align: center;">❌</td>
+                                <td style="text-align: center;">❌</td>
+                                <td style="text-align: center;">✅</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ユーザー管理</strong></td>
+                                <td style="text-align: center;">❌</td>
+                                <td style="text-align: center;">❌</td>
+                                <td style="text-align: center;">✅</td>
+                            </tr>
+                            <tr>
+                                <td><strong>履歴閲覧</strong></td>
+                                <td style="text-align: center;">自分のみ</td>
+                                <td style="text-align: center;">部署内</td>
+                                <td style="text-align: center;">すべて</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top: 20px; padding: 16px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px;">
+                    <p style="margin: 0; color: #856404;"><strong>⚠️ 注意：</strong>権限設定の変更は即座に反映されます。慎重に操作してください。</p>
                 </div>
             </div>
         </div>

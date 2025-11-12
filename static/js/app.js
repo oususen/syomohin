@@ -2638,14 +2638,16 @@ function switchEmployeesSubtab(target) {
 
     if (target === 'list') {
         loadEmployeesList();
+    } else if (target === 'roles') {
+        loadRoleCounts();
     }
 }
 
 async function loadEmployeesList() {
-    const container = document.getElementById('employeesList');
-    if (!container) return;
+    const tbody = document.getElementById('employeesTableBody');
+    if (!tbody) return;
 
-    container.innerHTML = '<p class="loading">読み込み中...</p>';
+    tbody.innerHTML = '<tr><td colspan="9" class="loading">読み込み中...</td></tr>';
 
     try {
         const response = await fetch('/api/employees');
@@ -2654,52 +2656,56 @@ async function loadEmployeesList() {
         if (data.success) {
             renderEmployeesList(data.data || []);
         } else {
-            container.innerHTML = `<p class="error">${data.error || '読み込みに失敗しました'}</p>`;
+            tbody.innerHTML = `<tr><td colspan="9" class="error">${data.error || '読み込みに失敗しました'}</td></tr>`;
         }
     } catch (error) {
         console.error('employees load error:', error);
-        container.innerHTML = '<p class="error">読み込みに失敗しました</p>';
+        tbody.innerHTML = '<tr><td colspan="9" class="error">読み込みに失敗しました</td></tr>';
     }
 }
 
 function renderEmployeesList(employees) {
-    const container = document.getElementById('employeesList');
-    if (!container) return;
+    const tbody = document.getElementById('employeesTableBody');
+    if (!tbody) return;
 
     if (employees.length === 0) {
-        container.innerHTML = '<p style="text-align: center; color: #666;">従業員データがありません</p>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 40px; color: #666;">従業員データがありません</td></tr>';
         return;
     }
 
     const html = employees.map(employee => {
+        const id = employee.id || '-';
         const code = employee.code || '-';
         const name = employee.name || '-';
-        const department = employee.department || '-';
         const email = employee.email || '-';
+        const department = employee.department || '-';
         const role = employee.role || '-';
+        const createdAt = employee.created_at ? new Date(employee.created_at).toLocaleString('ja-JP') : '-';
+
+        // 状態バッジ（常に有効と表示）
+        const statusBadge = '<span style="background: #4caf50; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">有効</span>';
 
         return `
-            <div class="supplier-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin-bottom: 16px; background: #fff;">
-                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 12px;">
-                    <div>
-                        <h4 style="margin: 0 0 4px 0; font-size: 18px; color: #333;">${name}</h4>
-                        <span style="font-size: 12px; color: #666;">コード: ${code}</span>
+            <tr>
+                <td>${id}</td>
+                <td>${code}</td>
+                <td><strong>${name}</strong></td>
+                <td>${email}</td>
+                <td>${department}</td>
+                <td>${statusBadge}</td>
+                <td>${role}</td>
+                <td style="font-size: 13px; color: #666;">${createdAt}</td>
+                <td>
+                    <div style="display: flex; gap: 4px;">
+                        <button class="btn-small btn-edit" onclick="editEmployee(${employee.id})" title="編集">✏️</button>
+                        <button class="btn-small btn-delete" onclick="deleteEmployee(${employee.id}, '${name.replace(/'/g, "\\'")}')}" title="削除">🗑️</button>
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-secondary" onclick="editEmployee(${employee.id})" style="padding: 6px 12px; font-size: 14px;">✏️ 編集</button>
-                        <button class="btn btn-outline" onclick="deleteEmployee(${employee.id}, '${name}')" style="padding: 6px 12px; font-size: 14px; color: #d32f2f; border-color: #d32f2f;">🗑️ 削除</button>
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 14px; color: #666;">
-                    <strong>部署:</strong><span>${department}</span>
-                    <strong>メール:</strong><span>${email}</span>
-                    <strong>役職:</strong><span>${role}</span>
-                </div>
-            </div>
+                </td>
+            </tr>
         `;
     }).join('');
 
-    container.innerHTML = html;
+    tbody.innerHTML = html;
 }
 
 async function submitEmployeeForm() {
@@ -2926,6 +2932,40 @@ function downloadEmployeesCsvTemplate() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(link.href);
+}
+
+// ロール別ユーザー数を取得
+async function loadRoleCounts() {
+    try {
+        const response = await fetch('/api/employees');
+        const data = await response.json();
+
+        if (data.success && data.data) {
+            const roleCounts = {
+                '一般': 0,
+                'マネージャー': 0,
+                '管理者': 0
+            };
+
+            data.data.forEach(emp => {
+                const role = emp.role || '一般';
+                if (roleCounts.hasOwnProperty(role)) {
+                    roleCounts[role]++;
+                }
+            });
+
+            // 各ロールの件数を表示
+            const generalCell = document.getElementById('roleCount_general');
+            const managerCell = document.getElementById('roleCount_manager');
+            const adminCell = document.getElementById('roleCount_admin');
+
+            if (generalCell) generalCell.textContent = `${roleCounts['一般']} 人`;
+            if (managerCell) managerCell.textContent = `${roleCounts['マネージャー']} 人`;
+            if (adminCell) adminCell.textContent = `${roleCounts['管理者']} 人`;
+        }
+    } catch (error) {
+        console.error('ロール数の取得エラー:', error);
+    }
 }
 
 // 入出庫履歴ページ
