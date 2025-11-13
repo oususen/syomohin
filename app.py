@@ -5,8 +5,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flask import Flask, render_template, send_from_directory, make_response, jsonify
+from flask import Flask, render_template, send_from_directory, make_response, jsonify, session, redirect, url_for
 from flask_cors import CORS
+from datetime import timedelta
 
 import config
 from routes.inventory import inventory_bp
@@ -20,6 +21,8 @@ from routes.users import users_bp
 # Flaskアプリケーション初期化
 app = Flask(__name__)
 app.config['JSON_AS_ASCII'] = False  # 日本語をそのまま出力
+app.config['SECRET_KEY'] = 'your-secret-key-change-this-in-production'  # セッション用の秘密鍵
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)  # セッション有効期限
 CORS(app)
 
 # アップロード設定
@@ -42,8 +45,19 @@ app.register_blueprint(users_bp)
 
 @app.route("/")
 def index():
-    """メインページ"""
+    """メインページ（認証が必要）"""
+    if 'user_id' not in session:
+        return redirect(url_for('login'))
     return render_template("index.html")
+
+
+@app.route("/login")
+def login():
+    """ログインページ"""
+    # 既にログイン済みの場合はメインページへ
+    if 'user_id' in session:
+        return redirect(url_for('index'))
+    return render_template("login.html")
 
 
 @app.route("/download/consumables-template")

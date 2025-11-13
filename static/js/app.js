@@ -16,6 +16,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 async function init() {
+    // 現在のユーザー情報を取得
+    await loadCurrentUser();
+
     // フィルターオプションを取得
     await loadFilterOptions();
 
@@ -3717,6 +3720,113 @@ async function savePermissions() {
     } catch (error) {
         console.error('権限保存エラー:', error);
         showError('権限の保存に失敗しました');
+    }
+}
+
+// ========================================
+// 認証関連の関数
+// ========================================
+
+// 現在のユーザー情報を取得
+async function loadCurrentUser() {
+    try {
+        const response = await fetch('/api/current-user');
+        const data = await response.json();
+
+        if (data.success) {
+            const userName = data.user.full_name || data.user.username;
+            document.getElementById('currentUserName').textContent = `👤 ${userName}`;
+        } else {
+            // ログインしていない場合はログインページへ
+            window.location.href = '/login';
+        }
+    } catch (error) {
+        console.error('ユーザー情報取得エラー:', error);
+        window.location.href = '/login';
+    }
+}
+
+// ログアウト
+async function logout() {
+    if (!confirm('ログアウトしますか？')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/logout', {
+            method: 'POST'
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            // ログインページへリダイレクト
+            window.location.href = '/login';
+        } else {
+            showError('ログアウトに失敗しました');
+        }
+    } catch (error) {
+        console.error('ログアウトエラー:', error);
+        showError('ログアウトに失敗しました');
+    }
+}
+
+// パスワード変更モーダルを開く
+function openChangePasswordModal() {
+    document.getElementById('currentPassword').value = '';
+    document.getElementById('newPassword').value = '';
+    document.getElementById('confirmPassword').value = '';
+    document.getElementById('changePasswordModal').style.display = 'flex';
+}
+
+// パスワード変更モーダルを閉じる
+function closeChangePasswordModal() {
+    document.getElementById('changePasswordModal').style.display = 'none';
+}
+
+// パスワード変更
+async function changePassword() {
+    const currentPassword = document.getElementById('currentPassword').value;
+    const newPassword = document.getElementById('newPassword').value;
+    const confirmPassword = document.getElementById('confirmPassword').value;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+        showError('全ての項目を入力してください');
+        return;
+    }
+
+    if (newPassword !== confirmPassword) {
+        showError('新しいパスワードが一致しません');
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        showError('パスワードは6文字以上で入力してください');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/change-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                current_password: currentPassword,
+                new_password: newPassword,
+                confirm_password: confirmPassword
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSuccess('パスワードを変更しました');
+            closeChangePasswordModal();
+        } else {
+            showError(data.error || 'パスワードの変更に失敗しました');
+        }
+    } catch (error) {
+        console.error('パスワード変更エラー:', error);
+        showError('パスワードの変更に失敗しました');
     }
 }
 

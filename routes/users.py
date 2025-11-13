@@ -3,8 +3,9 @@
 """
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request
-from werkzeug.security import generate_password_hash
+from flask import Blueprint, jsonify, request, session
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
 
 from database_manager import get_db_manager
 
@@ -431,5 +432,162 @@ def update_permissions(role_id: int):
                 )
 
         return jsonify({"success": True, "message": "権限を更新しました"})
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@users_bp.route("/api/login", methods=["POST"])
+def login():
+    """ログイン"""
+    try:
+        data = request.get_json() or {}
+        username = (data.get("username") or "").strip()
+        password = (data.get("password") or "").strip()
+        remember_me = data.get("remember_me", False)
+
+        if not username or not password:
+            return jsonify({"success": False, "error": "ユーザー名とパスワードを入力してください"}), 400
+
+        db = get_db_manager()
+
+        # ユーザーを取得
+        user_df = db.execute_query(
+            """
+            SELECT id, username, password_hash, full_name, is_active
+            FROM users
+            WHERE username = :username
+            """,
+            {"username": username},
+        )
+
+        if user_df.empty:
+            return jsonify({"success": False, "error": "ユーザー名またはパスワードが正しくありません"}), 401
+
+        user = user_df.iloc[0]
+
+        # アカウントが無効化されているかチェック
+        if not user["is_active"]:
+            return jsonify({"success": False, "error": "このアカウントは無効化されています"}), 401
+
+        # パスワードを検証
+        if not check_password_hash(user["password_hash"], password):
+            return jsonify({"success": False, "error": "ユーザー名またはパスワードが正しくありません"}), 401
+
+        # セッションに保存
+        session["user_id"] = int(user["id"])
+        session["username"] = user["username"]
+        session["full_name"] = user["full_name"]
+        session.permanent = remember_me  # チェックボックスがONの場合、永続セッション
+
+        # 最終ログイン日時を更新
+        db.execute_update(
+            "UPDATE users SET last_login = :last_login WHERE id = :id",
+            {"last_login": datetime.now(), "id": user["id"]},
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "ログインしました",
+            "user": {
+                "id": int(user["id"]),
+                "username": user["username"],
+                "full_name": user["full_name"]
+            }
+        })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@users_bp.route("/api/logout", methods=["POST"])
+def logout():
+    """ログアウト"""
+    try:
+        session.clear()
+        return jsonify({"success": True, "message": "ログアウトしました"})
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@users_bp.route("/api/current-user", methods=["GET"])
+def get_current_user():
+    """現在のログインユーザー情報を取得"""
+    try:
+        if "user_id" not in session:
+            return jsonify({"success": False, "error": "ログインしていません"}), 401
+
+        db = get_db_manager()
+
+        # ユーザー情報とロールを取得
+        user_df = db.execute_query(
+            """
+            SELECT
+                u.id,
+                u.username,
+                u.full_name,
+                u.email,
+                GROUP_CONCAT(r.role_name ORDER BY r.role_name SEPARATOR ', ') as roles
+            FROM users u
+            LEFT JOIN user_roles ur ON u.id = ur.user_id
+            LEFT JOIN roles r ON ur.role_id = r.id
+            WHERE u.id = :user_id
+            GROUP BY u.id, u.username, u.full_name, u.email
+            """,
+            {"user_id": session["user_id"]},
+        )
+
+        if user_df.empty:
+            return jsonify({"success": False, "error": "ユーザーが見つかりません"}), 404
+
+        user_data = user_df.iloc[0].to_dict()
+        return jsonify({"success": True, "user": user_data})
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@users_bp.route("/api/change-password", methods=["POST"])
+def change_password():
+    """パスワード変更"""
+    try:
+        if "user_id" not in session:
+            return jsonify({"success": False, "error": "ログインしていません"}), 401
+
+        data = request.get_json() or {}
+        current_password = (data.get("current_password") or "").strip()
+        new_password = (data.get("new_password") or "").strip()
+        confirm_password = (data.get("confirm_password") or "").strip()
+
+        if not current_password or not new_password or not confirm_password:
+            return jsonify({"success": False, "error": "全ての項目を入力してください"}), 400
+
+        if new_password != confirm_password:
+            return jsonify({"success": False, "error": "新しいパスワードが一致しません"}), 400
+
+        if len(new_password) < 6:
+            return jsonify({"success": False, "error": "パスワードは6文字以上で入力してください"}), 400
+
+        db = get_db_manager()
+
+        # 現在のパスワードを確認
+        user_df = db.execute_query(
+            "SELECT password_hash FROM users WHERE id = :id",
+            {"id": session["user_id"]},
+        )
+
+        if user_df.empty:
+            return jsonify({"success": False, "error": "ユーザーが見つかりません"}), 404
+
+        if not check_password_hash(user_df.iloc[0]["password_hash"], current_password):
+            return jsonify({"success": False, "error": "現在のパスワードが正しくありません"}), 401
+
+        # 新しいパスワードを設定
+        db.execute_update(
+            "UPDATE users SET password_hash = :password_hash WHERE id = :id",
+            {
+                "password_hash": generate_password_hash(new_password),
+                "id": session["user_id"]
+            },
+        )
+
+        return jsonify({"success": True, "message": "パスワードを変更しました"})
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500

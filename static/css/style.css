@@ -15,8 +15,10 @@ body {
     background: linear-gradient(135deg, #009688 0%, #00796B 100%);
     color: white;
     padding: 20px;
-    text-align: center;
     box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
 .header h1 {
@@ -27,6 +29,22 @@ body {
 .subtitle {
     font-size: 14px;
     opacity: 0.9;
+}
+
+.header-user-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.header-user-info span {
+    font-weight: 600;
+    font-size: 14px;
+}
+
+.btn-sm {
+    padding: 8px 16px;
+    font-size: 13px;
 }
 
 /* ナビゲーションメニュー */
