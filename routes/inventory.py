@@ -53,6 +53,8 @@ def get_inventory():
                 c.unit AS 単位,
                 c.stock_quantity AS 在庫数,
                 c.safety_stock AS 安全在庫,
+                c.unit_price AS 単価,
+                c.unit_price AS unit_price,
                 c.order_status AS 注文状態,
                 c.shortage_status AS 欠品状態,
                 s.name AS 購入先,

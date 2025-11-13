@@ -165,73 +165,83 @@ async function searchDirectOrderConsumables() {
 // ギャラリー表示
 function renderDirectOrderGallery(items) {
     const gallery = document.getElementById('directOrderGallery');
+    if (!gallery) return;
 
-    gallery.innerHTML = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px;">
-            ${items.map(item => {
-                const imagePath = item.image_path ? buildImageUrl(item.image_path) : '';
-                const isShortage = item.is_shortage === 1 || item.is_shortage === true;
-                const orderStatus = item.order_status || '-';
-                const stockStatus = isShortage ? '欠品' : '在庫あり';
+    const cards = (items || []).map(item => {
+        const consumableId = Number(item.id || item.consumable_id || item.consumableId || 0);
+        if (!consumableId) {
+            return '';
+        }
 
-                return `
-                    <div class="consumable-card" style="border: 1px solid #ddd; border-radius: 12px; padding: 16px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                        <!-- 画像エリア -->
-                        <div style="position: relative; width: 100%; height: 200px; background: #f5f5f5; border-radius: 8px; overflow: hidden; margin-bottom: 16px;">
-                            ${imagePath ?
-                                `<img src="${imagePath}" alt="${escapeHtml(item.name)}" style="width: 100%; height: 100%; object-fit: contain;">` :
-                                `<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999; font-size: 64px;">📦</div>`
-                            }
-                            ${isShortage ? '<span style="position: absolute; top: 12px; right: 12px; background: #d32f2f; color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: bold;">欠品</span>' : ''}
+        const code = pickField(item, ['コード', 'code', 'qr_code']) || '';
+        const orderCode = pickField(item, ['発注コード', 'order_code']) || '';
+        const name = pickField(item, ['品名', 'name']) || '';
+        const category = pickField(item, ['カテゴリ', 'category']) || '';
+        const unit = pickField(item, ['単位', 'unit']) || '';
+        const supplier = pickField(item, ['購入先', 'supplier_name', 'supplier']) || '';
+        const stockQuantity = Number(pickField(item, ['在庫数', 'stock_quantity']) || 0);
+        const safetyStock = Number(pickField(item, ['安全在庫', 'safety_stock', 'min_stock_quantity']) || 0);
+        const shortageStatus = pickField(item, ['欠品状態', 'shortage_status']) || '状態未設定';
+        const orderStatus = pickField(item, ['注文状態', 'order_status']) || '状態未設定';
+        const unitPriceValue = Number(pickField(item, ['単価', 'unit_price']) || 0);
+        const rawImagePath = pickField(item, ['画像URL', 'image_path']);
+        const imageUrl = typeof buildImageUrl === 'function'
+            ? buildImageUrl(rawImagePath)
+            : (rawImagePath || 'https://placehold.co/240x180?text=No+Image');
+
+        const shortageTheme = shortageStatus.includes('欠') || shortageStatus.includes('危')
+            ? { icon: '△', textColor: '#c62828', bgColor: '#fdecea' }
+            : { icon: '○', textColor: '#1b5e20', bgColor: '#e8f5e9' };
+
+        const unitLabel = unit || '個';
+        const unitPriceText = `¥${unitPriceValue.toLocaleString('ja-JP')}`;
+        const qtyInputId = `qty_${consumableId}`;
+        const codeLiteral = JSON.stringify(code || '');
+        const nameLiteral = JSON.stringify(name || '');
+        const unitLiteral = JSON.stringify(unitLabel);
+        const supplierLiteral = JSON.stringify(supplier || '');
+
+        return `
+            <div class="direct-order-card" style="display:flex; gap:18px; align-items:stretch; border:1px solid #e0e6f0; border-radius:14px; padding:18px; background:#fff; box-shadow:0 2px 8px rgba(15,23,42,0.08); margin-bottom:18px;">
+                <div style="flex:0 0 220px;">
+                    <div style="width:100%; aspect-ratio:4/3; background:#f5f7fb; border-radius:12px; display:flex; align-items:center; justify-content:center; overflow:hidden;">
+                        <img src="${imageUrl}" alt="${escapeHtml(name)}" style="width:100%; height:100%; object-fit:contain;" loading="lazy">
+                    </div>
+                </div>
+                <div style="flex:1; display:flex; flex-direction:column; gap:10px;">
+                    <div style="display:flex; justify-content:space-between; gap:16px; align-items:flex-start;">
+                        <div>
+                            <div style="font-size:20px; font-weight:600; color:#111827;">${escapeHtml(name || '-')}</div>
+                            <div style="margin-top:4px; color:#607d8b; font-size:13px;">部品番号: ${escapeHtml(code || '-')} ／ 発注コード: ${escapeHtml(orderCode || '-')}</div>
+                            <div style="margin-top:4px; color:#607d8b; font-size:13px;">カテゴリ: ${escapeHtml(category || '-')}</div>
+                            <div style="margin-top:4px; color:#607d8b; font-size:13px;">購入先: <strong>${escapeHtml(supplier || '-')}</strong></div>
                         </div>
-
-                        <!-- 商品名 -->
-                        <h3 style="font-size: 18px; font-weight: bold; margin: 0 0 12px 0; color: #333;">${escapeHtml(item.name)}</h3>
-
-                        <!-- 商品詳細 -->
-                        <div style="background: #f9f9f9; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
-                            <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 13px; line-height: 1.6;">
-                                <span style="color: #666;">コード:</span><span style="font-weight: 500;">${escapeHtml(item.code)}</span>
-                                <span style="color: #666;">購入先:</span><span style="font-weight: 500;">${escapeHtml(item.supplier_name || '-')}</span>
-                                <span style="color: #666;">単価:</span><span style="font-weight: 500; color: #009688;">¥${(item.unit_price || 0).toLocaleString()}</span>
-                                <span style="color: #666;">在庫数:</span><span style="font-weight: 500;">${item.stock_quantity || 0} ${escapeHtml(item.unit || '')}</span>
-                                <span style="color: #666;">安全在庫:</span><span style="font-weight: 500;">${item.min_stock_quantity || 0} ${escapeHtml(item.unit || '')}</span>
-                                <span style="color: #666;">在庫状態:</span><span style="font-weight: 500; color: ${isShortage ? '#d32f2f' : '#4caf50'};">${stockStatus}</span>
-                                <span style="color: #666;">注文状態:</span><span style="font-weight: 500;">${orderStatus}</span>
-                            </div>
-                        </div>
-
-                        <!-- 数量入力と追加ボタン -->
-                        <div style="display: flex; gap: 12px; align-items: center;">
-                            <div style="flex: 1;">
-                                <label style="display: block; font-size: 12px; color: #666; margin-bottom: 4px;">数量</label>
-                                <input type="number" id="qty_${item.id}" min="1" value="1"
-                                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;"
-                                       onclick="event.stopPropagation();">
-                            </div>
-                            <div style="flex: 2; padding-top: 20px;">
-                                <button class="btn btn-primary"
-                                        onclick="addDirectOrderFromCard(${item.id}, '${escapeHtml(item.code || '')}', '${escapeHtml(item.name || '')}', '${escapeHtml(item.unit || '')}', ${item.unit_price || 0}, '${escapeHtml(item.supplier_name || '-')}')"
-                                        style="width: 100%; padding: 10px; font-size: 14px; font-weight: bold;">
-                                    ➕ 発注準備に追加
-                                </button>
-                            </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:18px; font-weight:700; color:#d32f2f;">${unitPriceText}</div>
+                            <div style="font-size:12px; color:#607d8b;">単位: ${escapeHtml(unitLabel)}</div>
                         </div>
                     </div>
-                `;
-            }).join('')}
-        </div>
-    `;
-}
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <span style="background:#eef2ff; color:#3730a3; padding:4px 10px; border-radius:999px; font-size:12px;">在庫 ${stockQuantity} ${escapeHtml(unitLabel)}</span>
+                        <span style="background:#fef9c3; color:#a16207; padding:4px 10px; border-radius:999px; font-size:12px;">安全在庫 ${safetyStock} ${escapeHtml(unitLabel)}</span>
+                        <span style="background:${shortageTheme.bgColor}; color:${shortageTheme.textColor}; padding:4px 10px; border-radius:999px; font-size:12px;">${shortageTheme.icon} ${escapeHtml(shortageStatus)}</span>
+                        <span style="background:#e0f2f1; color:#00695c; padding:4px 10px; border-radius:999px; font-size:12px;">注文状態: ${escapeHtml(orderStatus)}</span>
+                    </div>
+                </div>
+                <div style="flex:0 0 180px; border-left:1px solid #edf2fb; padding-left:16px; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <label style="display:block; font-size:12px; color:#6b7280; margin-bottom:6px;">数量（${escapeHtml(unitLabel)}）</label>
+                        <input type="number" id="${qtyInputId}" min="1" value="1" style="width:100%; padding:10px 12px; border:1px solid #cbd5f5; border-radius:8px; font-size:15px;" onclick="event.stopPropagation();">
+                    </div>
+                    <button class="btn btn-primary" style="margin-top:14px; width:100%; font-weight:600;" onclick='addDirectOrderFromCard(${consumableId}, ${codeLiteral}, ${nameLiteral}, ${unitLiteral}, ${unitPriceValue}, ${supplierLiteral})'>
+                        カートに追加
+                    </button>
+                </div>
+            </div>
+        `;
+    }).filter(Boolean).join('');
 
-// 画像URLを構築（inventory.jsと同じ）
-function buildImageUrl(imagePath) {
-    if (!imagePath) return '';
-    if (imagePath.startsWith('http')) return imagePath;
-    if (imagePath.startsWith('/uploads')) return imagePath;
-    if (imagePath.startsWith('uploads/')) return '/' + imagePath;
-    if (imagePath.startsWith('images/')) return '/uploads/' + imagePath;
-    return '/uploads/images/' + imagePath;
+    gallery.innerHTML = cards || '<p style="color: #999; text-align: center;">表示できる消耗品がありません</p>';
 }
 
 // HTMLエスケープ（XSS対策）
@@ -248,6 +258,11 @@ function escapeHtml(str) {
 // カードから直接発注準備に追加
 async function addDirectOrderFromCard(consumableId, code, name, unit, unitPrice, supplierName) {
     const qtyInput = document.getElementById(`qty_${consumableId}`);
+    if (!qtyInput) {
+        showError('数量入力欄が見つかりません');
+        return;
+    }
+
     const quantity = parseInt(qtyInput.value) || 1;
 
     if (quantity < 1) {
