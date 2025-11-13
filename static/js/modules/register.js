@@ -8,6 +8,11 @@ const CSV_TEMPLATE_SAMPLE = [
     'NOZUR-20-DB-1,S01,ノズル 20mm,消耗品A,本,4,8,850,1,FactoryDirect,備品1,安全在庫割れ対策,様子見,要注意',
 ].join('\n');
 
+let editGalleryCollapsed = false;
+let imageCaptureStream = null;
+let currentImageCaptureTarget = null;
+let capturedImageDataUrl = null;
+
 function triggerFileDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -252,6 +257,13 @@ function initRegisterPage() {
             });
         }
 
+        const galleryToggleBtn = document.getElementById('editGalleryToggleBtn');
+        if (galleryToggleBtn) {
+            galleryToggleBtn.addEventListener('click', () => {
+                setGalleryCollapsed(!editGalleryCollapsed);
+            });
+        }
+
         const editSearchInput = document.getElementById('editSearchCode');
         if (editSearchInput) {
             editSearchInput.addEventListener('keydown', (event) => {
@@ -271,6 +283,7 @@ function initRegisterPage() {
         // 画像アップロード機能のイベントリスナー
         setupImageUpload('register');
         setupImageUpload('edit');
+        setupImageCameraControls();
 
         registerPageEventsBound = true;
     }
@@ -280,6 +293,8 @@ function initRegisterPage() {
     if (currentRegisterSubtab === 'edit') {
         ensureEditGalleryLoaded();
     }
+
+    setGalleryCollapsed(editGalleryCollapsed);
 }
 
 function setupRegisterSubtabs() {
@@ -416,6 +431,7 @@ async function handleEditCardSelect(index) {
     const item = editGalleryCache[index];
     if (!item) return;
     updateEditPreview(item);
+    setGalleryCollapsed(true);
     await loadEditDetail(item);
 }
 
@@ -565,6 +581,18 @@ function populateEditForm(detail) {
     }
 
     fields.hidden = false;
+    focusEditFormFields();
+}
+
+function focusEditFormFields() {
+    const formFields = document.getElementById('editFormFields');
+    if (!formFields) return;
+    requestAnimationFrame(() => {
+        formFields.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+        });
+    });
 }
 
 async function submitEditForm() {
@@ -669,6 +697,11 @@ function setupImageUpload(prefix) {
             }
         });
     }
+
+    const imageCameraBtn = document.getElementById(`${prefix}ImageCameraBtn`);
+    if (imageCameraBtn) {
+        imageCameraBtn.addEventListener('click', () => openImageCameraModal(prefix));
+    }
 }
 
 function setImagePreview(prefix, imageUrl) {
@@ -680,5 +713,179 @@ function setImagePreview(prefix, imageUrl) {
         imagePreviewBox.hidden = false;
     } else if (imagePreviewBox) {
         imagePreviewBox.hidden = true;
+    }
+}
+
+function setGalleryCollapsed(collapsed) {
+    editGalleryCollapsed = collapsed;
+    const gallery = document.getElementById('editGalleryContainer');
+    if (gallery) {
+        gallery.classList.toggle('collapsed', collapsed);
+    }
+    const toggleBtn = document.getElementById('editGalleryToggleBtn');
+    if (toggleBtn) {
+        toggleBtn.textContent = collapsed ? '📚 カードを表示' : '👁 カードを隠す';
+    }
+}
+
+function setupImageCameraControls() {
+    const captureBtn = document.getElementById('imageCameraCaptureBtn');
+    const useBtn = document.getElementById('imageCameraUseBtn');
+    const retakeBtn = document.getElementById('imageCameraRetakeBtn');
+
+    if (captureBtn) {
+        captureBtn.addEventListener('click', captureImageFromCamera);
+    }
+    if (useBtn) {
+        useBtn.addEventListener('click', applyCapturedImageFromCamera);
+    }
+    if (retakeBtn) {
+        retakeBtn.addEventListener('click', resetImageCameraPreview);
+    }
+}
+
+async function openImageCameraModal(targetPrefix) {
+    const modal = document.getElementById('imageCameraModal');
+    const video = document.getElementById('imageCameraVideo');
+    const preview = document.getElementById('imageCameraPreview');
+    const useBtn = document.getElementById('imageCameraUseBtn');
+    const retakeBtn = document.getElementById('imageCameraRetakeBtn');
+
+    if (!modal || !video) {
+        showError('カメラモーダルを初期化できませんでした');
+        return;
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        showError('このブラウザではカメラ機能が利用できません');
+        return;
+    }
+
+    currentImageCaptureTarget = targetPrefix;
+    capturedImageDataUrl = null;
+
+    if (preview) preview.hidden = true;
+    if (useBtn) useBtn.disabled = true;
+    if (retakeBtn) retakeBtn.style.display = 'none';
+
+    try {
+        imageCaptureStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' } }
+        });
+        video.srcObject = imageCaptureStream;
+        await video.play();
+        modal.style.display = 'flex';
+    } catch (error) {
+        console.error('image camera open error:', error);
+        showError('カメラを起動できませんでした。ブラウザの権限を確認してください');
+    }
+}
+
+function closeImageCameraModal() {
+    const modal = document.getElementById('imageCameraModal');
+    const preview = document.getElementById('imageCameraPreview');
+    const useBtn = document.getElementById('imageCameraUseBtn');
+    const retakeBtn = document.getElementById('imageCameraRetakeBtn');
+
+    if (modal) {
+        modal.style.display = 'none';
+    }
+    if (preview) {
+        preview.hidden = true;
+        const img = preview.querySelector('img');
+        if (img) {
+            img.src = '';
+        }
+    }
+    if (useBtn) useBtn.disabled = true;
+    if (retakeBtn) retakeBtn.style.display = 'none';
+    capturedImageDataUrl = null;
+    currentImageCaptureTarget = null;
+    stopImageCaptureStream();
+}
+
+function captureImageFromCamera() {
+    const video = document.getElementById('imageCameraVideo');
+    const canvas = document.getElementById('imageCameraCanvas');
+    const preview = document.getElementById('imageCameraPreview');
+    const useBtn = document.getElementById('imageCameraUseBtn');
+    const retakeBtn = document.getElementById('imageCameraRetakeBtn');
+
+    if (!video || !canvas) {
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    capturedImageDataUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+    if (preview) {
+        const img = preview.querySelector('img');
+        if (img) {
+            img.src = capturedImageDataUrl;
+            preview.hidden = false;
+        }
+    }
+    if (useBtn) useBtn.disabled = false;
+    if (retakeBtn) retakeBtn.style.display = 'inline-flex';
+}
+
+function resetImageCameraPreview() {
+    capturedImageDataUrl = null;
+    const preview = document.getElementById('imageCameraPreview');
+    const useBtn = document.getElementById('imageCameraUseBtn');
+    const retakeBtn = document.getElementById('imageCameraRetakeBtn');
+
+    if (preview) {
+        preview.hidden = true;
+    }
+    if (useBtn) useBtn.disabled = true;
+    if (retakeBtn) retakeBtn.style.display = 'none';
+}
+
+function applyCapturedImageFromCamera() {
+    if (!capturedImageDataUrl || !currentImageCaptureTarget) {
+        showError('先に撮影してください');
+        return;
+    }
+
+    const targetInput = document.getElementById(`${currentImageCaptureTarget}Image`);
+    if (!targetInput) {
+        showError('画像の適用先が見つかりません');
+        return;
+    }
+
+    if (typeof DataTransfer === 'undefined') {
+        showError('ブラウザが画像の貼り付けに対応していません');
+        return;
+    }
+
+    const file = dataUrlToFile(capturedImageDataUrl, `camera_${Date.now()}.jpg`);
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(file);
+    targetInput.files = dataTransfer.files;
+    targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+    closeImageCameraModal();
+}
+
+function dataUrlToFile(dataUrl, filename) {
+    const arr = dataUrl.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+}
+
+function stopImageCaptureStream() {
+    if (imageCaptureStream) {
+        imageCaptureStream.getTracks().forEach(track => track.stop());
+        imageCaptureStream = null;
     }
 }

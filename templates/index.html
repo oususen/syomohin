@@ -1132,7 +1132,7 @@ body {
         </div>
 
         <div id="usersAddSection" class="detail-tab-content" data-user-content="add" hidden>
-            <div class="form-container">
+            <div class="form-container edit-form-panel">
                 <h3 class="section-title">新規ユーザー登録</h3>
                 <div class="filter-group">
                     <label for="userUsername">ユーザー名 *</label>
@@ -1417,13 +1417,14 @@ body {
             </div>
             <div class="filter-group image-upload-group">
                 <label for="registerImage">商品画像</label>
-                <input type="file" id="registerImage" class="input-field file-input" accept="image/*">
+                <input type="file" id="registerImage" class="input-field file-input" accept="image/*" capture="environment">
                 <input type="hidden" id="registerImagePath">
                 <div class="image-preview" id="registerImagePreviewBox" hidden>
                     <img src="" alt="商品画像プレビュー">
                 </div>
                 <div class="image-upload-actions">
                     <button type="button" class="btn btn-secondary" id="registerImageClearBtn">画像をクリア</button>
+                    <button type="button" class="btn btn-outline" id="registerImageCameraBtn">📷 カメラで撮影</button>
                 </div>
                 <small class="import-hint">PNG/JPG/GIF 最大 5MB まで</small>
             </div>
@@ -1457,6 +1458,9 @@ body {
                         <button id="editLoadBtn" class="btn btn-secondary" type="button">ギャラリーを更新</button>
                     </div>
                     <small class="import-hint">キーワード未入力の場合は全件を表示します。</small>
+                    <div class="gallery-toolbar">
+                        <button id="editGalleryToggleBtn" class="btn btn-outline btn-sm" type="button">📚 カードを隠す</button>
+                    </div>
                 </div>
                 <div id="editGalleryContainer" class="inventory-list compact">
                     <p class="loading">消耗品ギャラリーを読み込み中...</p>
@@ -1522,13 +1526,14 @@ body {
                     </div>
                     <div class="filter-group image-upload-group">
                         <label for="editImage">商品画像</label>
-                        <input type="file" id="editImage" class="input-field file-input" accept="image/*">
+                        <input type="file" id="editImage" class="input-field file-input" accept="image/*" capture="environment">
                         <input type="hidden" id="editImagePath">
                         <div class="image-preview" id="editImagePreviewBox" hidden>
                             <img src="" alt="商品画像プレビュー">
                         </div>
                         <div class="image-upload-actions">
                             <button type="button" class="btn btn-secondary" id="editImageClearBtn">画像をクリア</button>
+                            <button type="button" class="btn btn-outline" id="editImageCameraBtn">📷 カメラで撮影</button>
                         </div>
                         <small class="import-hint">PNG/JPG/GIF 最大 5MB まで</small>
                     </div>
@@ -2275,6 +2280,28 @@ body {
                 <button id="captureBtn" class="btn btn-primary">
                      撮影
                 </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 画像撮影モーダル -->
+    <div id="imageCameraModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 640px;">
+            <div class="modal-header">
+                <h3>📷 商品写真を撮影</h3>
+                <button class="close-btn" onclick="closeImageCameraModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <video id="imageCameraVideo" autoplay playsinline muted style="width: 100%; border-radius: 8px; background: #000;"></video>
+                <canvas id="imageCameraCanvas" style="display: none;"></canvas>
+                <div id="imageCameraPreview" class="image-camera-preview" hidden>
+                    <img src="" alt="撮影した画像のプレビュー">
+                </div>
+            </div>
+            <div class="modal-footer image-camera-actions">
+                <button class="btn btn-secondary" type="button" id="imageCameraCaptureBtn">📸 撮影</button>
+                <button class="btn btn-outline" type="button" id="imageCameraRetakeBtn" style="display: none;">↺ 撮り直す</button>
+                <button class="btn btn-primary" type="button" id="imageCameraUseBtn" disabled>画像を適用</button>
             </div>
         </div>
     </div>
