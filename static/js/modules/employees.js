@@ -4,6 +4,57 @@
 
 let currentEmployeesSubtab = 'list';
 let employeesPageEventsBound = false;
+let employeesEditAllowed = true;
+
+function evaluateEmployeesEditPermission() {
+    employeesEditAllowed =
+        typeof hasPagePermission === 'function'
+            ? hasPagePermission('従業員管理', 'edit')
+            : true;
+    return employeesEditAllowed;
+}
+
+function ensureEmployeesEditPermission() {
+    if (!employeesEditAllowed) {
+        showError('この操作を行う権限がありません');
+        return false;
+    }
+    return true;
+}
+
+function toggleEmployeesSectionInputs(sectionId, enabled) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    section.querySelectorAll('input, select, textarea').forEach((el) => {
+        if (el.dataset.permissionIgnore === 'true') return;
+        el.disabled = !enabled;
+    });
+}
+
+function setEmployeesButtonDisabled(buttonId, disabled) {
+    const el = document.getElementById(buttonId);
+    if (!el) return;
+    el.disabled = disabled;
+    el.classList.toggle('is-disabled', disabled);
+}
+
+function showEmployeesReadOnlyNotice(noticeId, visible) {
+    const el = document.getElementById(noticeId);
+    if (el) {
+        el.hidden = !visible;
+    }
+}
+
+function applyEmployeesPermissionLocks() {
+    evaluateEmployeesEditPermission();
+    toggleEmployeesSectionInputs('employeesAddSection', employeesEditAllowed);
+    toggleEmployeesSectionInputs('employeesEditSection', employeesEditAllowed);
+    setEmployeesButtonDisabled('employeeSubmitBtn', !employeesEditAllowed);
+    setEmployeesButtonDisabled('employeeUpdateBtn', !employeesEditAllowed);
+    setEmployeesButtonDisabled('employeeCsvImportBtn', !employeesEditAllowed);
+    showEmployeesReadOnlyNotice('employeesAddReadOnlyNotice', !employeesEditAllowed);
+    showEmployeesReadOnlyNotice('employeesEditReadOnlyNotice', !employeesEditAllowed);
+}
 
 function initEmployeesPage() {
     if (!employeesPageEventsBound) {
@@ -38,6 +89,8 @@ function initEmployeesPage() {
 
         employeesPageEventsBound = true;
     }
+
+    applyEmployeesPermissionLocks();
 
     if (currentEmployeesSubtab === 'list') {
         loadEmployeesList();
@@ -117,6 +170,15 @@ function renderEmployeesList(employees) {
 
         // 状態バッジ（常に有効と表示）
         const statusBadge = '<span style="background: #4caf50; color: white; padding: 4px 12px; border-radius: 12px; font-size: 12px;">有効</span>';
+        const safeName = name.replace(/'/g, "&#39;");
+        const actionButtons = employeesEditAllowed
+            ? `
+                <div style="display: flex; gap: 4px;">
+                    <button class="btn-small btn-edit" onclick="editEmployee(${employee.id})" title="編集">✏️</button>
+                    <button class="btn-small btn-delete" onclick="deleteEmployee(${employee.id}, '${safeName}')" title="削除">🗑️</button>
+                </div>
+            `
+            : '<span style="color: #9e9e9e; font-size: 12px;">閲覧のみ</span>';
 
         return `
             <tr>
@@ -128,12 +190,7 @@ function renderEmployeesList(employees) {
                 <td>${statusBadge}</td>
                 <td>${role}</td>
                 <td style="font-size: 13px; color: #666;">${createdAt}</td>
-                <td>
-                    <div style="display: flex; gap: 4px;">
-                        <button class="btn-small btn-edit" onclick="editEmployee(${employee.id})" title="編集">✏️</button>
-                        <button class="btn-small btn-delete" onclick="deleteEmployee(${employee.id}, '${name.replace(/'/g, "\\'")}')}" title="削除">🗑️</button>
-                    </div>
-                </td>
+                <td>${actionButtons}</td>
             </tr>
         `;
     }).join('');
@@ -142,6 +199,10 @@ function renderEmployeesList(employees) {
 }
 
 async function submitEmployeeForm() {
+    if (!ensureEmployeesEditPermission()) {
+        return;
+    }
+
     const code = document.getElementById('employeeCode').value.trim();
     const name = document.getElementById('employeeName').value.trim();
 
@@ -225,6 +286,10 @@ async function editEmployee(id) {
 }
 
 async function updateEmployee() {
+    if (!ensureEmployeesEditPermission()) {
+        return;
+    }
+
     const id = document.getElementById('editEmployeeId').value;
     const name = document.getElementById('editEmployeeName').value.trim();
 
@@ -286,6 +351,10 @@ function cancelEditEmployee() {
 }
 
 async function deleteEmployee(id, name) {
+    if (!ensureEmployeesEditPermission()) {
+        return;
+    }
+
     if (!confirm(`従業員「${name}」を削除しますか？`)) {
         return;
     }
@@ -310,6 +379,10 @@ async function deleteEmployee(id, name) {
 }
 
 async function importEmployeesCsv() {
+    if (!ensureEmployeesEditPermission()) {
+        return;
+    }
+
     const fileInput = document.getElementById('employeeCsvFileInput');
     const file = fileInput?.files[0];
 

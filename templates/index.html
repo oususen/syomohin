@@ -1006,7 +1006,7 @@ body {
         <button class="nav-btn" data-page="operations">↕️ 入出庫</button>
         <button class="nav-btn" data-page="dispatch">🛒 発注</button>
         <button class="nav-btn" data-page="suppliers">購入先管理</button>
-        <button class="nav-btn" data-page="employees">👤 従業員</button>
+        <button class="nav-btn" data-page="employees">👤 従業員管理</button>
         <button class="nav-btn" data-page="users">👥 ユーザー管理</button>
     </nav>
 
@@ -1368,6 +1368,9 @@ body {
 
         <div id="registerFormSection" class="form-container detail-tab-content" data-detail-tab-content="create">
             <h3 class="section-title">基本情報の入力</h3>
+                <div class="read-only-notice" id="registerCreateReadOnlyNotice" hidden>
+                    このアカウントは閲覧専用のため、新規登録はできません。
+                </div>
 
             <div class="filter-group">
                 <label for="registerCode">コード *</label>
@@ -1459,7 +1462,7 @@ body {
                     </div>
                     <small class="import-hint">キーワード未入力の場合は全件を表示します。</small>
                     <div class="gallery-toolbar">
-                        <button id="editGalleryToggleBtn" class="btn btn-outline btn-sm" type="button">📚 カードを隠す</button>
+                        <button id="editGalleryToggleBtn" class="btn btn-outline btn-sm" type="button">👁 カードを隠す</button>
                     </div>
                 </div>
                 <div id="editGalleryContainer" class="inventory-list compact">
@@ -1469,6 +1472,9 @@ body {
 
             <div class="form-container">
                 <h3 class="section-title">選択中のアイテム</h3>
+                <div class="read-only-notice" id="registerEditReadOnlyNotice" hidden>
+                    このアカウントは閲覧専用のため、内容の編集はできません。
+                </div>
                 <div id="editItemPreview" class="quick-item-card" hidden></div>
                 <div id="editFormFields" hidden>
                     <div class="filter-group">
@@ -2083,6 +2089,9 @@ body {
         <div id="employeesAddSection" class="detail-tab-content" data-detail-tab-content="add" hidden>
             <div class="form-container">
                 <h3 class="section-title">新規従業員の登録</h3>
+                <div class="read-only-notice" id="employeesAddReadOnlyNotice" hidden>
+                    このアカウントは閲覧専用のため、新規登録はできません。
+                </div>
 
                 <div class="filter-group">
                     <label for="employeeCode">従業員コード *</label>
@@ -2139,6 +2148,9 @@ body {
         <div id="employeesEditSection" class="detail-tab-content" data-detail-tab-content="edit" hidden>
             <div class="form-container">
                 <h3 class="section-title">従業員情報の編集</h3>
+                <div class="read-only-notice" id="employeesEditReadOnlyNotice" hidden>
+                    このアカウントは閲覧専用のため、内容の編集はできません。
+                </div>
 
                 <input type="hidden" id="editEmployeeId">
 

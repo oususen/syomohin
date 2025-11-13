@@ -9,6 +9,7 @@ from flask import Blueprint, jsonify, request
 from werkzeug.security import generate_password_hash
 
 from database_manager import get_db_manager
+from utils.permission_utils import require_page_permission
 
 employees_bp = Blueprint("employees", __name__)
 
@@ -63,6 +64,7 @@ def get_employee_by_code(employee_code):
 
 
 @employees_bp.route("/api/employees", methods=["POST"])
+@require_page_permission("従業員管理", "edit")
 def add_employee():
     """従業員を追加するAPI"""
     try:
@@ -107,6 +109,7 @@ def add_employee():
 
 
 @employees_bp.route("/api/employees/<int:employee_id>", methods=["PUT"])
+@require_page_permission("従業員管理", "edit")
 def update_employee(employee_id):
     """従業員を更新するAPI"""
     try:
@@ -157,6 +160,7 @@ def update_employee(employee_id):
 
 
 @employees_bp.route("/api/employees/<int:employee_id>", methods=["DELETE"])
+@require_page_permission("従業員管理", "edit")
 def delete_employee(employee_id):
     """従業員を削除するAPI"""
     try:
@@ -176,6 +180,7 @@ def delete_employee(employee_id):
 
 
 @employees_bp.route("/api/employees/import-csv", methods=["POST"])
+@require_page_permission("従業員管理", "edit")
 def import_employees_csv():
     """従業員CSVをインポートするAPI"""
     try:

@@ -369,7 +369,11 @@ function buildPermissionMap(items, keyField) {
         return map;
     }
     items.forEach(item => {
-        const key = item[keyField];
+        if (!item) return;
+        let key = item[keyField];
+        if (typeof key === 'string') {
+            key = key.trim();
+        }
         if (!key) return;
         map[key] = {
             can_view: Boolean(Number(item.can_view)),
