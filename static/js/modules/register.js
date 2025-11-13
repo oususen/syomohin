@@ -2,6 +2,41 @@
 // 新規登録ページ
 // ========================================
 
+const CSV_TEMPLATE_SAMPLE = [
+    '\uFEFFコード,発注コード,品名,カテゴリ,単位,在庫数,安全在庫,単価,発注単位,仕入先,保管場所,備考,注文状態,欠品状態',
+    'TIP-12-EG-1,S01,EGチップ Sサイズ,実験用品,個,10,5,1200,1,LabMart,試薬A,テスト用データ,未発注,在庫あり',
+    'NOZUR-20-DB-1,S01,ノズル 20mm,消耗品A,本,4,8,850,1,FactoryDirect,備品1,安全在庫割れ対策,様子見,要注意',
+].join('\n');
+
+function triggerFileDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+async function downloadCsvTemplate() {
+    const filename = 'consumables_template.csv';
+    try {
+        const response = await fetch('/download/consumables-template');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+        triggerFileDownload(blob, filename);
+        showSuccess('CSVテンプレートをダウンロードしました');
+    } catch (error) {
+        console.warn('テンプレート取得に失敗したためローカルデータに切り替えます。', error);
+        const blob = new Blob([CSV_TEMPLATE_SAMPLE], { type: 'text/csv;charset=utf-8;' });
+        triggerFileDownload(blob, filename);
+        showSuccess('サーバーに接続できなかったため、ローカルでサンプルを生成しました');
+    }
+}
+
 // 購入先一覧を読み込む
 async function loadSuppliers() {
     try {
