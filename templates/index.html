@@ -25,6 +25,7 @@
         <button class="nav-btn" data-page="dispatch">発注</button>
         <button class="nav-btn" data-page="suppliers">購入先管理</button>
         <button class="nav-btn" data-page="employees">👤 従業員</button>
+        <button class="nav-btn" data-page="users">👥 ユーザー管理</button>
     </nav>
 
     <!-- 在庫一覧ページ -->
@@ -76,6 +77,123 @@
                 <select id="shortageStatus" class="input-field">
                     <option value="すべて">すべて</option>
                 </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- ユーザー管理ページ -->
+    <div id="usersPage" class="page-content">
+        <div class="page-header">
+            <h2>👤 ユーザー管理</h2>
+            <p>ログイン用のユーザーアカウントを管理します</p>
+        </div>
+
+        <div class="subtab-group" id="usersSubtabs">
+            <button class="subtab-btn active" data-user-tab="list">📋 ユーザー一覧</button>
+            <button class="subtab-btn" data-user-tab="add">➕ 新規登録</button>
+            <button class="subtab-btn" data-user-tab="edit">🛠 個別編集</button>
+        </div>
+
+        <div id="usersListSection" class="detail-tab-content" data-user-content="list">
+            <div class="table-container">
+                <table class="employees-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>ユーザー名</th>
+                            <th>氏名</th>
+                            <th>メールアドレス</th>
+                            <th>役職</th>
+                            <th>状態</th>
+                            <th>作成日</th>
+                            <th>最終ログイン</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="9" class="loading">読み込み中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="usersAddSection" class="detail-tab-content" data-user-content="add" hidden>
+            <div class="form-container">
+                <h3 class="section-title">新規ユーザー登録</h3>
+                <div class="filter-group">
+                    <label for="userUsername">ユーザー名 *</label>
+                    <input type="text" id="userUsername" class="input-field" placeholder="例: yamada" required>
+                </div>
+                <div class="filter-group">
+                    <label for="userFullName">氏名 *</label>
+                    <input type="text" id="userFullName" class="input-field" placeholder="例: 山田 太郎" required>
+                </div>
+                <div class="filter-group">
+                    <label for="userEmail">メールアドレス</label>
+                    <input type="email" id="userEmail" class="input-field" placeholder="yamada@example.com">
+                </div>
+                <div class="filter-group">
+                    <label for="userPassword">パスワード *</label>
+                    <input type="password" id="userPassword" class="input-field" placeholder="6文字以上" required>
+                </div>
+                <div class="filter-group">
+                    <label>役職（複数選択可）</label>
+                    <div id="userRolesCheckboxes" class="checkbox-group">
+                        <!-- ロールのチェックボックスは動的に生成 -->
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label for="userActive">状態</label>
+                    <select id="userActive" class="input-field">
+                        <option value="active">有効</option>
+                        <option value="inactive">無効</option>
+                    </select>
+                </div>
+                <button id="userSubmitBtn" class="btn btn-primary primary-action" type="button">
+                    ✅ ユーザーを登録する
+                </button>
+            </div>
+        </div>
+
+        <div id="usersEditSection" class="detail-tab-content" data-user-content="edit" hidden>
+            <div class="form-container">
+                <h3 class="section-title">ユーザー情報の編集</h3>
+                <input type="hidden" id="editUserId">
+                <div class="filter-group">
+                    <label for="editUserUsername">ユーザー名 *</label>
+                    <input type="text" id="editUserUsername" class="input-field" required>
+                </div>
+                <div class="filter-group">
+                    <label for="editUserFullName">氏名 *</label>
+                    <input type="text" id="editUserFullName" class="input-field" required>
+                </div>
+                <div class="filter-group">
+                    <label for="editUserEmail">メールアドレス</label>
+                    <input type="email" id="editUserEmail" class="input-field">
+                </div>
+                <div class="filter-group">
+                    <label for="editUserPassword">新しいパスワード</label>
+                    <input type="password" id="editUserPassword" class="input-field" placeholder="変更する場合のみ入力">
+                </div>
+                <div class="filter-group">
+                    <label>役職（複数選択可）</label>
+                    <div id="editUserRolesCheckboxes" class="checkbox-group">
+                        <!-- ロールのチェックボックスは動的に生成 -->
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label for="editUserActive">状態</label>
+                    <select id="editUserActive" class="input-field">
+                        <option value="active">有効</option>
+                        <option value="inactive">無効</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <button id="userUpdateBtn" class="btn btn-primary primary-action" type="button">💾 更新する</button>
+                    <button id="userCancelEditBtn" class="btn btn-outline" type="button">✖ キャンセル</button>
+                </div>
             </div>
         </div>
     </div>
@@ -746,8 +864,8 @@
     <!-- 従業員管理ページ -->
     <div id="employeesPage" class="page-content">
         <div class="page-header">
-            <h2>👥 ユーザー管理</h2>
-            <p>ユーザーとロールを管理します</p>
+            <h2>👥 従業員管理</h2>
+            <p>従業員情報とロールを管理します</p>
         </div>
 
         <!-- サブタブ -->
