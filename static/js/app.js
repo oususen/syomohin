@@ -343,7 +343,67 @@ document.addEventListener('DOMContentLoaded', () => {
             switchOperationsSubtab(subtab);
         });
     });
+
+    document.querySelectorAll('#dispatchSubtabContainer .subtab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const subtab = btn.dataset.subtab;
+            switchDispatchSubtab(subtab);
+        });
+    });
 });
+
+// ========================================
+// 発注サブタブ機能
+// ========================================
+
+// 発注サブタブの切り替え
+function switchDispatchSubtab(subtab) {
+    // すべてのページコンテンツを非表示
+    document.querySelectorAll('.page-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    // サブタブボタンのactive状態を更新
+    document.querySelectorAll('#dispatchSubtabContainer .subtab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const activeBtn = document.querySelector(`#dispatchSubtabContainer [data-subtab="${subtab}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+
+    // 対応するページを表示
+    const subtabPageMap = {
+        'requests': 'dispatchRequestsPage',
+        'create': 'dispatchCreatePage',
+        'send': 'dispatchSendPage'
+    };
+
+    const pageId = subtabPageMap[subtab];
+    if (pageId) {
+        const page = document.getElementById(pageId);
+        if (page) {
+            page.classList.add('active');
+        }
+    }
+
+    // ページタイトルを更新
+    const subtabTitles = {
+        'requests': '📋 依頼管理',
+        'create': '📝 注文書作成',
+        'send': '📧 注文書送信'
+    };
+    document.getElementById('pageTitle').textContent = subtabTitles[subtab] || '🛒 発注';
+
+    // ページごとの初期化処理
+    if (typeof initDispatchRequestsPage === 'function' && subtab === 'requests') {
+        initDispatchRequestsPage();
+    } else if (typeof initDispatchCreatePage === 'function' && subtab === 'create') {
+        initDispatchCreatePage();
+    } else if (typeof initDispatchSendPage === 'function' && subtab === 'send') {
+        initDispatchSendPage();
+    }
+}
 
 // ========================================
 

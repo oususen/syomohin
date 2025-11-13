@@ -164,6 +164,19 @@ function switchPage(page) {
         return;
     }
 
+    // 発注タブの場合、サブタブを表示
+    if (page === 'dispatch') {
+        const subtabContainer = document.getElementById('dispatchSubtabContainer');
+        if (subtabContainer) {
+            subtabContainer.style.display = 'block';
+        }
+        // デフォルトで依頼管理を表示
+        if (typeof switchDispatchSubtab === 'function') {
+            switchDispatchSubtab('requests');
+        }
+        return;
+    }
+
     // ページコンテンツの表示を切り替え
     document.querySelectorAll('.page-content').forEach(content => {
         content.classList.remove('active');

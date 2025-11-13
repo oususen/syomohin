@@ -1004,9 +1004,7 @@ body {
         <button class="nav-btn active" data-page="inventory">在庫一覧</button>
         <button class="nav-btn" data-page="register"> 消耗品管理</button>
         <button class="nav-btn" data-page="operations">↕️ 入出庫</button>
-        <button class="nav-btn" data-page="order">注文依頼</button>
-        <button class="nav-btn" data-page="order-list">発注状態</button>
-        <button class="nav-btn" data-page="dispatch">発注</button>
+        <button class="nav-btn" data-page="dispatch">🛒 発注</button>
         <button class="nav-btn" data-page="suppliers">購入先管理</button>
         <button class="nav-btn" data-page="employees">👤 従業員</button>
         <button class="nav-btn" data-page="users">👥 ユーザー管理</button>
@@ -1018,6 +1016,15 @@ body {
             <button class="subtab-btn active" data-subtab="inbound">📥 入庫</button>
             <button class="subtab-btn" data-subtab="outbound">📤 出庫</button>
             <button class="subtab-btn" data-subtab="history">📋 入出庫履歴</button>
+        </div>
+    </div>
+
+    <!-- 発注サブタブ -->
+    <div class="subtab-container" id="dispatchSubtabContainer" style="display: none;">
+        <div class="subtab-group">
+            <button class="subtab-btn active" data-subtab="requests">📋 依頼管理</button>
+            <button class="subtab-btn" data-subtab="create">📝 注文書作成</button>
+            <button class="subtab-btn" data-subtab="send">📧 注文書送信</button>
         </div>
     </div>
 
@@ -1745,157 +1752,186 @@ body {
         </div>
     </div>
 
-    <!-- 発注ページ -->
-    <div id="dispatchPage" class="page-content">
+    <!-- 発注依頼管理ページ -->
+    <div id="dispatchRequestsPage" class="page-content">
         <div class="page-header">
-            <h2>発注（PDF作成・メール送信）</h2>
-            <p>注文書PDFを作成し、購入先にメール送信します</p>
+            <h2>📋 依頼管理</h2>
+            <p>部下からの依頼を確認し、却下または発注準備に移行します</p>
         </div>
 
-        <!-- ステップ1: 注文選択 -->
-        <div class="form-container">
-            <h3>ステップ1: 発注する注文を選択</h3>
-
-            <!-- フィルター -->
-            <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin-bottom: 16px;">
-                <h4 style="margin-top: 0;">検索 フィルター</h4>
-
-                <div class="filter-row" style="margin-bottom: 12px;">
-                    <div class="filter-group">
-                        <label for="dispatchQrCode">QRコード検索</label>
-                        <input type="text" id="dispatchQrCode" class="input-field"
-                               placeholder="QRコードを入力">
-                        <button id="dispatchScanBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
-                            QR QRスキャン
-                        </button>
-                    </div>
-                    <div class="filter-group">
-                        <label for="dispatchSearchText">品名検索</label>
-                        <input type="text" id="dispatchSearchText" class="input-field"
-                               placeholder="品名を検索">
-                    </div>
-                </div>
-
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label for="dispatchSupplier">購入先</label>
-                        <select id="dispatchSupplier" class="input-field">
-                            <option value="">すべて</option>
-                        </select>
-                    </div>
-                    <div class="filter-group">
-                        <label for="dispatchOrderStatus">注文状態</label>
-                        <select id="dispatchOrderStatus" class="input-field">
-                            <option value="">すべて</option>
-                            <option value="依頼中">依頼中</option>
-                            <option value="発注済">発注済</option>
-                            <option value="完了">完了</option>
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div class="button-group" style="margin-bottom: 16px;">
-                <button class="btn btn-primary" onclick="loadDispatchOrders()">
-                    再読込 注文を読み込み
-                </button>
-                <button class="btn btn-secondary" onclick="selectAllOrders()">
-                     すべて選択
-                </button>
-                <button class="btn btn-secondary" onclick="clearAllOrders()">
-                     すべて解除
-                </button>
-            </div>
-
-            <div id="dispatchOrdersList" style="max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 12px;">
-                <p class="loading">注文を読み込むボタンをクリックしてください</p>
-            </div>
-
-            <div id="selectedOrdersSummary" style="margin-top: 16px; padding: 12px; background: #f5f5f5; border-radius: 8px; display: none;">
-                <strong>選択中:</strong> <span id="selectedCount">0</span>件
-                <span style="margin-left: 20px;"><strong>合計金額:</strong> <span id="selectedTotal">0</span></span>
-            </div>
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" onclick="loadPendingOrders()">🔄 依頼を更新</button>
+            <button class="btn btn-secondary" onclick="showAddDirectOrderModal()">➕ 消耗品を直接追加</button>
         </div>
 
-        <!-- ステップ2: PDF設定 -->
-        <div class="form-container" style="margin-top: 20px;">
-            <h3>ステップ2: 注文書PDF設定</h3>
+        <div class="table-container">
+            <table class="employees-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>商品コード</th>
+                        <th>商品名</th>
+                        <th>数量</th>
+                        <th>単価</th>
+                        <th>合計金額</th>
+                        <th>納期</th>
+                        <th>依頼者</th>
+                        <th>購入先</th>
+                        <th>状態</th>
+                        <th>依頼日時</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingOrdersTableBody">
+                    <tr>
+                        <td colspan="12" class="loading">読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-            <div class="filter-group">
-                <label for="dispatchOrderNumber">注文書番号（任意）</label>
-                <input type="text" id="dispatchOrderNumber" class="input-field"
-                       placeholder="空欄の場合は自動採番されます">
-            </div>
-
-            <div class="filter-group">
-                <label for="dispatchNotes">備考</label>
-                <textarea id="dispatchNotes" class="input-field" rows="3"
-                          placeholder="注文書に表示する備考（任意）"></textarea>
-            </div>
-
-            <button class="btn btn-secondary" onclick="generatePDFOnly()" style="width: 100%;">
-                帳票 PDFのみ生成（ダウンロード）
-            </button>
+    <!-- 注文書作成ページ -->
+    <div id="dispatchCreatePage" class="page-content">
+        <div class="page-header">
+            <h2>📝 注文書作成</h2>
+            <p>発注準備中のアイテムを購入先別に確認し、注文書を作成します</p>
         </div>
 
-        <!-- ステップ3: メール設定 -->
-        <div class="form-container" style="margin-top: 20px;">
-            <h3>ステップ3: メール送信設定</h3>
-
-            <div class="filter-group">
-                <label for="dispatchEmailTo">宛先（To） *</label>
-                <input type="email" id="dispatchEmailTo" class="input-field"
-                       placeholder="supplier@example.com" required>
-                <small style="color: #666;">複数指定する場合はカンマ区切り</small>
-            </div>
-
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label for="dispatchEmailCc">CC（任意）</label>
-                    <input type="text" id="dispatchEmailCc" class="input-field"
-                           placeholder="cc@example.com">
-                </div>
-                <div class="filter-group">
-                    <label for="dispatchEmailBcc">BCC（任意）</label>
-                    <input type="text" id="dispatchEmailBcc" class="input-field"
-                           placeholder="bcc@example.com">
-                </div>
-            </div>
-
-            <div class="filter-group">
-                <label for="dispatchEmailSubject">件名 *</label>
-                <input type="text" id="dispatchEmailSubject" class="input-field"
-                       placeholder="【注文書送付】〇〇商事御中" required>
-            </div>
-
-            <div class="filter-group">
-                <label for="dispatchEmailBody">本文 *</label>
-                <textarea id="dispatchEmailBody" class="input-field" rows="6"
-                          placeholder="お世話になっております。&#10;&#10;注文書をお送りいたします。&#10;ご確認のほどよろしくお願いいたします。" required></textarea>
-            </div>
-
-            <div class="filter-group">
-                <label>
-                    <input type="checkbox" id="dispatchSavePdf" checked>
-                    PDFをサーバーに保存する
-                </label>
-            </div>
-
-            <button class="btn btn-primary" onclick="dispatchOrdersWithEmail()"
-                    style="width: 100%; font-size: 18px; padding: 16px;">
-                発注 注文書を作成してメール送信
-            </button>
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" onclick="loadDispatchItems()">🔄 データを更新</button>
         </div>
 
-        <!-- 結果表示エリア -->
-        <div id="dispatchResult" style="margin-top: 20px; display: none;">
-            <div class="form-container">
-                <h3> 発注完了</h3>
-                <div id="dispatchResultContent"></div>
+        <div id="dispatchItemsContainer">
+            <p class="loading">読み込み中...</p>
+        </div>
+    </div>
+
+    <!-- 注文書送信ページ -->
+    <div id="dispatchSendPage" class="page-content">
+        <div class="page-header">
+            <h2>📧 注文書送信</h2>
+            <p>作成済みの注文書を確認し、購入先にメール送信します</p>
+        </div>
+
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" onclick="loadDispatchOrders()">🔄 注文書を更新</button>
+        </div>
+
+        <div class="table-container">
+            <table class="employees-table">
+                <thead>
+                    <tr>
+                        <th>注文書番号</th>
+                        <th>購入先</th>
+                        <th>明細数</th>
+                        <th>合計金額</th>
+                        <th>状態</th>
+                        <th>作成者</th>
+                        <th>作成日時</th>
+                        <th>送信日時</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="dispatchOrdersTableBody">
+                    <tr>
+                        <td colspan="9" class="loading">読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 消耗品直接追加モーダル -->
+    <div id="addDirectOrderModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 1200px;">
+            <div class="modal-header">
+                <h3>➕ 消耗品を直接追加</h3>
+                <button class="close-btn" onclick="closeAddDirectOrderModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- フィルター部分 -->
+                <div class="filter-container" style="margin-bottom: 20px;">
+                    <h4 style="margin-bottom: 12px;">🔍 検索フィルター</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                        <div class="filter-group">
+                            <label for="directOrderCodeFilter">消耗品コード</label>
+                            <input type="text" id="directOrderCodeFilter" class="input-field" placeholder="コードで検索">
+                        </div>
+                        <div class="filter-group">
+                            <label for="directOrderNameFilter">品名</label>
+                            <input type="text" id="directOrderNameFilter" class="input-field" placeholder="品名で検索">
+                        </div>
+                        <div class="filter-group">
+                            <label for="directOrderShortageFilter">欠品状態</label>
+                            <select id="directOrderShortageFilter" class="input-field">
+                                <option value="すべて">すべて</option>
+                                <option value="欠品">欠品のみ</option>
+                                <option value="在庫あり">在庫ありのみ</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="searchDirectOrderConsumables()">🔍 検索</button>
+                </div>
+
+                <!-- ギャラリー表示部分 -->
+                <div id="directOrderGallery" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 8px; padding: 16px; background: #f9f9f9;">
+                    <p style="color: #666; text-align: center;">検索ボタンをクリックして消耗品を表示してください</p>
+                </div>
+
+                <!-- 選択した商品の詳細フォーム -->
+                <div id="directOrderForm" style="display: none; border-top: 2px solid #009688; padding-top: 20px;">
+                    <input type="hidden" id="selectedConsumableId">
+                    <h4 style="margin-bottom: 12px;">📝 発注情報入力</h4>
+                    <div class="filter-group">
+                        <label>選択した商品</label>
+                        <div id="selectedConsumableInfo" style="padding: 12px; background: #e0f2f1; border-radius: 4px; margin-bottom: 12px; border-left: 4px solid #009688;"></div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="filter-group">
+                            <label for="directOrderQuantity">数量 *</label>
+                            <input type="number" id="directOrderQuantity" class="input-field" min="1" value="1" required>
+                        </div>
+
+                        <div class="filter-group">
+                            <label for="directOrderDeadline">納期</label>
+                            <select id="directOrderDeadline" class="input-field">
+                                <option value="最短">最短</option>
+                                <option value="通常" selected>通常</option>
+                                <option value="余裕あり">余裕あり</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="directOrderNote">備考</label>
+                        <textarea id="directOrderNote" class="input-field" rows="3" placeholder="任意"></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-top: 20px;">
+                        <button class="btn btn-primary primary-action" onclick="submitDirectOrder()">✓ 発注準備に追加</button>
+                        <button class="btn btn-outline" onclick="closeAddDirectOrderModal()">✖ キャンセル</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- 注文書詳細モーダル -->
+    <div id="dispatchOrderDetailModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>📄 注文書詳細</h3>
+                <button class="close-btn" onclick="closeDispatchOrderDetailModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="dispatchOrderDetailContent">
+                    <p class="loading">読み込み中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
     <!-- 購入先管理ページ -->
     <div id="suppliersPage" class="page-content">
         <div class="page-header">
@@ -2251,6 +2287,7 @@ body {
     <script src="{{ url_for('static', filename='js/modules/register.js') }}"></script>
     <script src="{{ url_for('static', filename='js/modules/operations.js') }}"></script>
     <script src="{{ url_for('static', filename='js/modules/orders.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/modules/dispatch.js') }}"></script>
     <script src="{{ url_for('static', filename='js/modules/history.js') }}"></script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
 </body>
