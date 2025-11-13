@@ -88,6 +88,44 @@ body {
     background: #f0f8f7;
 }
 
+/* サブタブコンテナ */
+.subtab-container {
+    background: #f9f9f9;
+    border-bottom: 1px solid #e0e0e0;
+    padding: 8px 20px;
+}
+
+.subtab-group {
+    display: flex;
+    gap: 8px;
+}
+
+.subtab-btn {
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.3s;
+    color: #666;
+    white-space: nowrap;
+}
+
+.subtab-btn:hover {
+    background: #e8f5e9;
+    border-color: #009688;
+    color: #009688;
+}
+
+.subtab-btn.active {
+    background: #009688;
+    color: white;
+    border-color: #009688;
+    font-weight: 600;
+}
+
 /* ページコンテンツ */
 .page-content {
     display: none;
@@ -965,9 +1003,7 @@ body {
     <nav class="nav-menu">
         <button class="nav-btn active" data-page="inventory">在庫一覧</button>
         <button class="nav-btn" data-page="register"> 消耗品管理</button>
-        <button class="nav-btn" data-page="outbound">出庫</button>
-        <button class="nav-btn" data-page="inbound">入庫</button>
-        <button class="nav-btn" data-page="history">📋 履歴</button>
+        <button class="nav-btn" data-page="operations">↕️ 入出庫</button>
         <button class="nav-btn" data-page="order">注文依頼</button>
         <button class="nav-btn" data-page="order-list">発注状態</button>
         <button class="nav-btn" data-page="dispatch">発注</button>
@@ -975,6 +1011,15 @@ body {
         <button class="nav-btn" data-page="employees">👤 従業員</button>
         <button class="nav-btn" data-page="users">👥 ユーザー管理</button>
     </nav>
+
+    <!-- 入出庫サブタブ -->
+    <div class="subtab-container" id="operationsSubtabContainer" style="display: none;">
+        <div class="subtab-group">
+            <button class="subtab-btn active" data-subtab="inbound">📥 入庫</button>
+            <button class="subtab-btn" data-subtab="outbound">📤 出庫</button>
+            <button class="subtab-btn" data-subtab="history">📋 入出庫履歴</button>
+        </div>
+    </div>
 
     <!-- 在庫一覧ページ -->
     <div id="inventoryPage" class="page-content active">

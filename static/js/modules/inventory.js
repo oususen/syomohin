@@ -198,7 +198,33 @@ function handleInventoryAction(action, button) {
     const config = configMap[action];
     if (!config) return;
 
-    switchPage(action === 'order' ? 'order' : action);
+    // 出庫・入庫の場合は入出庫ページに遷移してサブタブを切り替え
+    if (action === 'outbound' || action === 'inbound') {
+        switchPage('operations');
+        // サブタブ切り替えのために少し待つ
+        setTimeout(() => {
+            if (typeof switchOperationsSubtab === 'function') {
+                switchOperationsSubtab(action);
+            }
+
+            if (config.qr) {
+                const qrInput = document.getElementById(config.qr);
+                if (qrInput) qrInput.value = payload.code;
+            }
+
+            showQuickInfo(config.container, config.details, payload);
+
+            const focusTarget = document.getElementById(config.focus);
+            if (focusTarget) {
+                focusTarget.focus();
+                focusTarget.select();
+            }
+        }, 100);
+        return;
+    }
+
+    // 注文依頼の場合は通常通り
+    switchPage('order');
     if (config.qr) {
         const qrInput = document.getElementById(config.qr);
         if (qrInput) qrInput.value = payload.code;

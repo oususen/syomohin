@@ -285,6 +285,67 @@ async function deleteSupplier(id, name) {
 }
 
 // ========================================
+// 入出庫サブタブ機能
+// ========================================
+
+// 入出庫サブタブの切り替え
+function switchOperationsSubtab(subtab) {
+    // すべてのページコンテンツを非表示
+    document.querySelectorAll('.page-content').forEach(content => {
+        content.classList.remove('active');
+    });
+
+    // サブタブボタンのactive状態を更新
+    document.querySelectorAll('#operationsSubtabContainer .subtab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const activeBtn = document.querySelector(`[data-subtab="${subtab}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+
+    // 対応するページを表示
+    const subtabPageMap = {
+        'inbound': 'inboundPage',
+        'outbound': 'outboundPage',
+        'history': 'historyPage'
+    };
+
+    const pageId = subtabPageMap[subtab];
+    if (pageId) {
+        const page = document.getElementById(pageId);
+        if (page) {
+            page.classList.add('active');
+        }
+    }
+
+    // ページタイトルを更新
+    const subtabTitles = {
+        'inbound': '📥 入庫',
+        'outbound': '📤 出庫',
+        'history': '📋 入出庫履歴'
+    };
+    document.getElementById('pageTitle').textContent = subtabTitles[subtab] || '↕️ 入出庫';
+
+    // ページごとの初期化処理
+    if (subtab === 'history') {
+        if (typeof initHistoryPage === 'function') {
+            initHistoryPage();
+        }
+    }
+}
+
+// サブタブボタンのイベントリスナーを設定
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('#operationsSubtabContainer .subtab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const subtab = btn.dataset.subtab;
+            switchOperationsSubtab(subtab);
+        });
+    });
+});
+
+// ========================================
 
 
 
