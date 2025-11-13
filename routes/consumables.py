@@ -19,6 +19,7 @@ from config import (
 from database_manager import get_db_manager
 from utils.csv_utils import resolve_csv_field, normalize_csv_row, parse_int, parse_float, resolve_supplier_id
 from utils.stock_utils import calculate_shortage_status
+from utils.permission_utils import require_page_permission
 
 consumables_bp = Blueprint("consumables", __name__)
 
@@ -46,6 +47,7 @@ def _is_allowed_image(filename: str) -> bool:
 
 
 @consumables_bp.route("/api/consumables/import-csv", methods=["POST"])
+@require_page_permission("消耗品管理", "edit")
 def import_consumables_csv():
     """CSVファイルから消耗品を新規登録"""
     try:
@@ -200,6 +202,7 @@ def get_consumable_detail(consumable_id: int):
 
 
 @consumables_bp.route("/api/consumables", methods=["POST"])
+@require_page_permission("消耗品管理", "edit")
 def create_consumable():
     """消耗品を新規登録するAPI"""
     try:
@@ -267,6 +270,7 @@ def create_consumable():
 
 
 @consumables_bp.route("/api/consumables/<int:consumable_id>", methods=["PUT"])
+@require_page_permission("消耗品管理", "edit")
 def update_consumable(consumable_id):
     """消耗品情報を更新するAPI"""
     try:
@@ -367,6 +371,7 @@ def update_consumable(consumable_id):
 
 
 @consumables_bp.route("/api/consumables/<int:consumable_id>", methods=["DELETE"])
+@require_page_permission("消耗品管理", "edit")
 def delete_consumable(consumable_id):
     """消耗品を削除するAPI"""
     try:
@@ -391,6 +396,7 @@ def delete_consumable(consumable_id):
 
 
 @consumables_bp.route("/api/uploads/images", methods=["POST"])
+@require_page_permission("消耗品管理", "edit")
 def upload_consumable_image():
     """�消耗品画像アップロードAPI"""
     try:

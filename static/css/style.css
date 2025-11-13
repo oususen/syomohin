@@ -1012,3 +1012,19 @@ body {
     justify-content: flex-end;
     flex-wrap: wrap;
 }
+
+.read-only-notice {
+    background: #fff8e1;
+    border: 1px solid #ffe082;
+    color: #8d6e63;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    margin-bottom: 12px;
+}
+
+.btn.is-disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+}

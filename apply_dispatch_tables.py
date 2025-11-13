@@ -17,12 +17,12 @@ def apply_dispatch_tables():
         if statement and not statement.startswith('--'):
             try:
                 db.execute_update(statement)
-                print(f"✓ 実行成功: {statement[:50]}...")
+                print(f"OK - Executed: {statement[:50]}...")
             except Exception as e:
-                print(f"✗ エラー: {e}")
+                print(f"ERROR: {e}")
                 print(f"  SQL: {statement[:100]}...")
 
-    print("\n発注機能用テーブルの作成が完了しました。")
+    print("\nDispatch tables creation completed.")
 
 if __name__ == "__main__":
     apply_dispatch_tables()

@@ -8,10 +8,70 @@ const CSV_TEMPLATE_SAMPLE = [
     'NOZUR-20-DB-1,S01,ノズル 20mm,消耗品A,本,4,8,850,1,FactoryDirect,備品1,安全在庫割れ対策,様子見,要注意',
 ].join('\n');
 
+let consumableEditAllowed = true;
 let editGalleryCollapsed = false;
 let imageCaptureStream = null;
 let currentImageCaptureTarget = null;
 let capturedImageDataUrl = null;
+
+function evaluateConsumableEditPermission() {
+    consumableEditAllowed =
+        typeof hasPagePermission === 'function'
+            ? hasPagePermission('消耗品管理', 'edit')
+            : true;
+    return consumableEditAllowed;
+}
+
+function ensureConsumableEditPermission() {
+    if (!consumableEditAllowed) {
+        showError('この操作を行う権限がありません');
+        return false;
+    }
+    return true;
+}
+
+function toggleSectionInputs(sectionId, enabled) {
+    const section = document.getElementById(sectionId);
+    if (!section) return;
+    section.querySelectorAll('input, select, textarea').forEach((el) => {
+        if (el.dataset.permissionIgnore === 'true') return;
+        el.disabled = !enabled;
+    });
+}
+
+function setElementDisabled(elementId, disabled) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+    el.disabled = disabled;
+    el.classList.toggle('is-disabled', disabled);
+    if (disabled) {
+        el.dataset.prevTitle = el.title;
+        el.title = '編集権限がありません';
+    } else if (el.dataset.prevTitle !== undefined) {
+        el.title = el.dataset.prevTitle || '';
+        delete el.dataset.prevTitle;
+    }
+}
+
+function showReadOnlyNotice(noticeId, visible) {
+    const el = document.getElementById(noticeId);
+    if (el) {
+        el.hidden = !visible;
+    }
+}
+
+function applyRegisterPermissionLocks() {
+    evaluateConsumableEditPermission();
+    toggleSectionInputs('registerFormSection', consumableEditAllowed);
+    toggleSectionInputs('editFormFields', consumableEditAllowed);
+    setElementDisabled('registerSubmitBtn', !consumableEditAllowed);
+    setElementDisabled('editSubmitBtn', !consumableEditAllowed);
+    setElementDisabled('csvImportBtn', !consumableEditAllowed);
+    setElementDisabled('registerImageCameraBtn', !consumableEditAllowed);
+    setElementDisabled('editImageCameraBtn', !consumableEditAllowed);
+    showReadOnlyNotice('registerCreateReadOnlyNotice', !consumableEditAllowed);
+    showReadOnlyNotice('registerEditReadOnlyNotice', !consumableEditAllowed);
+}
 
 function triggerFileDownload(blob, filename) {
     const url = URL.createObjectURL(blob);
@@ -85,6 +145,10 @@ async function loadSuppliers() {
 
 // 新規登録フォームを送信
 async function submitRegisterForm() {
+    if (!ensureConsumableEditPermission()) {
+        return;
+    }
+
     const code = document.getElementById('registerCode').value.trim();
     const name = document.getElementById('registerName').value.trim();
 
@@ -170,6 +234,10 @@ async function submitRegisterForm() {
 // 新規登録ページの初期化
 
 async function importConsumablesCsv() {
+    if (!ensureConsumableEditPermission()) {
+        return;
+    }
+
     const fileInput = document.getElementById('csvFileInput');
     if (!fileInput || fileInput.files.length === 0) {
         showError('CSVファイルを選択してください');
@@ -289,6 +357,8 @@ function initRegisterPage() {
     }
 
     loadSuppliers();
+
+    applyRegisterPermissionLocks();
 
     if (currentRegisterSubtab === 'edit') {
         ensureEditGalleryLoaded();
@@ -596,6 +666,10 @@ function focusEditFormFields() {
 }
 
 async function submitEditForm() {
+    if (!ensureConsumableEditPermission()) {
+        return;
+    }
+
     if (!currentEditItemId) {
         showError('編集するアイテムを選択してください');
         return;
@@ -745,6 +819,10 @@ function setupImageCameraControls() {
 }
 
 async function openImageCameraModal(targetPrefix) {
+    if ((targetPrefix === 'register' || targetPrefix === 'edit') && !ensureConsumableEditPermission()) {
+        return;
+    }
+
     const modal = document.getElementById('imageCameraModal');
     const video = document.getElementById('imageCameraVideo');
     const preview = document.getElementById('imageCameraPreview');

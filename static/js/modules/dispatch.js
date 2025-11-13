@@ -139,6 +139,8 @@ async function searchDirectOrderConsumables() {
         // 欠品状態フィルター
         if (shortage === '欠品') {
             url += '&shortage_status=欠品';
+        } else if (shortage === '要注意') {
+            url += '&shortage_status=要注意';
         } else if (shortage === '在庫あり') {
             url += '&shortage_status=在庫あり';
         } else {
@@ -189,8 +191,10 @@ function renderDirectOrderGallery(items) {
             ? buildImageUrl(rawImagePath)
             : (rawImagePath || 'https://placehold.co/240x180?text=No+Image');
 
-        const shortageTheme = shortageStatus.includes('欠') || shortageStatus.includes('危')
+        const shortageTheme = shortageStatus.includes('欠')
             ? { icon: '△', textColor: '#c62828', bgColor: '#fdecea' }
+            : shortageStatus.includes('要注意') || shortageStatus.includes('危')
+            ? { icon: '⚠', textColor: '#d32f2f', bgColor: '#fff3e0' }
             : { icon: '○', textColor: '#1b5e20', bgColor: '#e8f5e9' };
 
         const unitLabel = unit || '個';
