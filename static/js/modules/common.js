@@ -381,8 +381,8 @@ function escapeAttr(value) {
     return String(value).replace(/"/g, '&quot;');
 }
 
-function getStatusClass(value, type) {
-    if (!value) return "status-neutral";
+function getStatusClass(value, type) {
+    if (!value) return "status-neutral";
     const text = String(value);
     if (type === "shortage") {
         if (text.includes("欠") || text.includes("危") || text.includes("注意")) {
@@ -398,8 +398,33 @@ function getStatusClass(value, type) {
             return "status-warning";
         }
         return "status-info";
-    }
-    return "status-info";
-}
+    }
+    return "status-info";
+}
+
+function buildImageUrl(imagePath) {
+    if (!imagePath) {
+        return 'https://placehold.co/200x150?text=No+Image';
+    }
+
+    const pathStr = String(imagePath).trim();
+    if (!pathStr) {
+        return 'https://placehold.co/200x150?text=No+Image';
+    }
+
+    if (pathStr.startsWith('http://') || pathStr.startsWith('https://')) {
+        return pathStr;
+    }
+
+    if (pathStr.startsWith('/uploads/')) {
+        return pathStr;
+    }
+
+    if (pathStr.startsWith('uploads/')) {
+        return '/' + pathStr;
+    }
+
+    return '/uploads/' + pathStr;
+}
 
 
