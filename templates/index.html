@@ -95,14 +95,15 @@
     <!-- ユーザー管理ページ -->
     <div id="usersPage" class="page-content">
         <div class="page-header">
-            <h2>👤 ユーザー管理</h2>
-            <p>ログイン用のユーザーアカウントを管理します</p>
+            <h2>👥 ユーザー管理</h2>
+            <p>ユーザーとロールを管理します</p>
         </div>
 
         <div class="subtab-group" id="usersSubtabs">
-            <button class="subtab-btn active" data-user-tab="list">📋 ユーザー一覧</button>
+            <button class="subtab-btn active" data-user-tab="list">👤 ユーザー一覧</button>
             <button class="subtab-btn" data-user-tab="add">➕ 新規登録</button>
-            <button class="subtab-btn" data-user-tab="edit">🛠 個別編集</button>
+            <button class="subtab-btn" data-user-tab="roles">📋 ロール管理</button>
+            <button class="subtab-btn" data-user-tab="permissions">🔧 権限設定</button>
         </div>
 
         <div id="usersListSection" class="detail-tab-content" data-user-content="list">
@@ -168,9 +169,66 @@
             </div>
         </div>
 
-        <div id="usersEditSection" class="detail-tab-content" data-user-content="edit" hidden>
+        <div id="usersRolesSection" class="detail-tab-content" data-user-content="roles" hidden>
             <div class="form-container">
-                <h3 class="section-title">ユーザー情報の編集</h3>
+                <h3 class="section-title">ロール一覧</h3>
+                <div class="table-container">
+                    <table class="employees-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>ロール名</th>
+                                <th>説明</th>
+                                <th>ユーザー数</th>
+                                <th>作成日</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rolesTableBody">
+                            <tr>
+                                <td colspan="5" class="loading">読み込み中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div id="usersPermissionsSection" class="detail-tab-content" data-user-content="permissions" hidden>
+            <div class="form-container">
+                <h3 class="section-title">権限設定</h3>
+                <p style="color: #666; margin-bottom: 20px;">各ロールのページアクセス権限を管理します</p>
+                <div id="permissionsMatrix" class="table-container">
+                    <table class="employees-table">
+                        <thead>
+                            <tr>
+                                <th>ページ名</th>
+                                <th>一般</th>
+                                <th>リーダ</th>
+                                <th>班長</th>
+                                <th>係長</th>
+                                <th>課長</th>
+                                <th>部長</th>
+                            </tr>
+                        </thead>
+                        <tbody id="permissionsTableBody">
+                            <tr>
+                                <td colspan="7" class="loading">読み込み中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ユーザー編集モーダル -->
+    <div id="userEditModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>ユーザー情報の編集</h3>
+                <button class="close-btn" onclick="closeUserEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
                 <input type="hidden" id="editUserId">
                 <div class="filter-group">
                     <label for="editUserUsername">ユーザー名 *</label>
@@ -201,9 +259,9 @@
                         <option value="inactive">無効</option>
                     </select>
                 </div>
-                <div style="display: flex; gap: 12px;">
+                <div style="display: flex; gap: 12px; margin-top: 20px;">
                     <button id="userUpdateBtn" class="btn btn-primary primary-action" type="button">💾 更新する</button>
-                    <button id="userCancelEditBtn" class="btn btn-outline" type="button">✖ キャンセル</button>
+                    <button class="btn btn-outline" onclick="closeUserEditModal()" type="button">✖ キャンセル</button>
                 </div>
             </div>
         </div>

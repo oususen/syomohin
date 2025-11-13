@@ -3091,7 +3091,7 @@ async function initUsersPage() {
     // サブタブ切り替え
     const subtabs = document.querySelectorAll('#usersSubtabs .subtab-btn');
     subtabs.forEach(btn => {
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
             const targetTab = btn.getAttribute('data-user-tab');
 
             // ボタンのアクティブ状態を更新
@@ -3102,6 +3102,13 @@ async function initUsersPage() {
             document.querySelectorAll('[data-user-content]').forEach(content => {
                 content.hidden = content.getAttribute('data-user-content') !== targetTab;
             });
+
+            // タブに応じてデータを読み込み
+            if (targetTab === 'roles') {
+                await loadRolesList();
+            } else if (targetTab === 'permissions') {
+                await loadPermissionsMatrix();
+            }
         });
     });
 
@@ -3116,12 +3123,6 @@ async function initUsersPage() {
 
     // 更新ボタン
     document.getElementById('userUpdateBtn').addEventListener('click', updateUser);
-
-    // キャンセルボタン
-    document.getElementById('userCancelEditBtn').addEventListener('click', () => {
-        // 一覧タブに戻る
-        document.querySelector('[data-user-tab="list"]').click();
-    });
 }
 
 async function loadRoles() {
@@ -3291,8 +3292,8 @@ async function editUser(userId) {
             const roleIds = user.roles ? user.roles.map(r => r.id) : [];
             renderRoleCheckboxes('editUserRolesCheckboxes', roleIds);
 
-            // 編集タブに切り替え
-            document.querySelector('[data-user-tab="edit"]').click();
+            // モーダルを表示
+            document.getElementById('userEditModal').style.display = 'flex';
         } else {
             showError(data.error || 'ユーザー情報の取得に失敗しました');
         }
@@ -3300,6 +3301,10 @@ async function editUser(userId) {
         console.error('ユーザー情報取得エラー:', error);
         showError('ユーザー情報の取得に失敗しました');
     }
+}
+
+function closeUserEditModal() {
+    document.getElementById('userEditModal').style.display = 'none';
 }
 
 async function updateUser() {
@@ -3345,10 +3350,10 @@ async function updateUser() {
 
         if (data.success) {
             showSuccess('ユーザー情報を更新しました');
+            // モーダルを閉じる
+            closeUserEditModal();
             // 一覧を再読み込み
             await loadUsersList();
-            // 一覧タブに切り替え
-            document.querySelector('[data-user-tab="list"]').click();
         } else {
             showError(data.error || 'ユーザー情報の更新に失敗しました');
         }
@@ -3380,6 +3385,133 @@ async function deleteUser(userId, username) {
         console.error('ユーザー削除エラー:', error);
         showError('ユーザーの削除に失敗しました');
     }
+}
+
+async function loadRolesList() {
+    try {
+        const [rolesResponse, usersResponse] = await Promise.all([
+            fetch('/api/roles'),
+            fetch('/api/users')
+        ]);
+
+        const rolesData = await rolesResponse.json();
+        const usersData = await usersResponse.json();
+
+        if (rolesData.success && usersData.success) {
+            displayRolesList(rolesData.data, usersData.data);
+        } else {
+            showError('ロール一覧の取得に失敗しました');
+        }
+    } catch (error) {
+        console.error('ロール一覧取得エラー:', error);
+        showError('ロール一覧の取得に失敗しました');
+    }
+}
+
+function displayRolesList(roles, users) {
+    const tbody = document.getElementById('rolesTableBody');
+
+    if (!roles || roles.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="loading">ロールが登録されていません</td></tr>';
+        return;
+    }
+
+    // 各ロールのユーザー数をカウント
+    const roleCounts = {};
+    users.forEach(user => {
+        if (user.roles) {
+            const roleNames = user.roles.split(', ');
+            roleNames.forEach(roleName => {
+                roleCounts[roleName] = (roleCounts[roleName] || 0) + 1;
+            });
+        }
+    });
+
+    tbody.innerHTML = roles.map(role => {
+        const createdAt = role.created_at ? new Date(role.created_at).toLocaleDateString('ja-JP') : '-';
+        const userCount = roleCounts[role.role_name] || 0;
+
+        return `
+            <tr>
+                <td>${role.id}</td>
+                <td><strong>${role.role_name}</strong></td>
+                <td>${role.description || '-'}</td>
+                <td>${userCount} 名</td>
+                <td>${createdAt}</td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function loadPermissionsMatrix() {
+    try {
+        const response = await fetch('/api/roles');
+        const data = await response.json();
+
+        if (data.success) {
+            displayPermissionsMatrix(data.data);
+        } else {
+            showError('権限設定の取得に失敗しました');
+        }
+    } catch (error) {
+        console.error('権限設定取得エラー:', error);
+        showError('権限設定の取得に失敗しました');
+    }
+}
+
+function displayPermissionsMatrix(roles) {
+    const tbody = document.getElementById('permissionsTableBody');
+
+    // ページ一覧（実際のシステムのページに合わせて調整）
+    const pages = [
+        '在庫一覧',
+        '消耗品管理',
+        '出庫',
+        '入庫',
+        '注文依頼',
+        '発注状態',
+        '発注',
+        '購入先管理',
+        '従業員管理',
+        'ユーザー管理',
+        '履歴'
+    ];
+
+    // ロールを順番に並べる
+    const roleOrder = ['一般', 'リーダ', '班長', '係長', '課長', '部長'];
+    const sortedRoles = roleOrder.map(name => roles.find(r => r.role_name === name)).filter(r => r);
+
+    tbody.innerHTML = pages.map(pageName => {
+        const cells = sortedRoles.map(role => {
+            // 簡易的な権限判定（実際のデータベースから取得する場合は修正が必要）
+            const hasAccess = determineAccess(role.role_name, pageName);
+            const icon = hasAccess ? '✓' : '−';
+            const color = hasAccess ? '#4caf50' : '#ccc';
+
+            return `<td style="text-align: center; color: ${color}; font-weight: bold;">${icon}</td>`;
+        }).join('');
+
+        return `
+            <tr>
+                <td><strong>${pageName}</strong></td>
+                ${cells}
+            </tr>
+        `;
+    }).join('');
+}
+
+function determineAccess(roleName, pageName) {
+    // 権限マトリックスの簡易版（init_roles.sqlの内容に基づく）
+    const permissions = {
+        '一般': ['在庫一覧', '出庫', '入庫', '注文依頼', '履歴'],
+        'リーダ': ['在庫一覧', '出庫', '入庫', '注文依頼', '発注状態', '履歴'],
+        '班長': ['在庫一覧', '消耗品管理', '出庫', '入庫', '注文依頼', '発注状態', '発注', '履歴'],
+        '係長': ['在庫一覧', '消耗品管理', '出庫', '入庫', '注文依頼', '発注状態', '発注', '購入先管理', '履歴'],
+        '課長': ['在庫一覧', '消耗品管理', '出庫', '入庫', '注文依頼', '発注状態', '発注', '購入先管理', '従業員管理', '履歴'],
+        '部長': ['在庫一覧', '消耗品管理', '出庫', '入庫', '注文依頼', '発注状態', '発注', '購入先管理', '従業員管理', 'ユーザー管理', '履歴']
+    };
+
+    return permissions[roleName]?.includes(pageName) || false;
 }
 
 

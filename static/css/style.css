@@ -659,6 +659,8 @@ body {
     height: 100%;
     background-color: rgba(0,0,0,0.7);
     animation: fadeIn 0.3s;
+    justify-content: center;
+    align-items: center;
 }
 
 @keyframes fadeIn {
@@ -668,11 +670,14 @@ body {
 
 .modal-content {
     background: white;
-    margin: 5% auto;
+    margin: 0;
     max-width: 600px;
+    width: 90%;
     border-radius: 16px;
     overflow: hidden;
     animation: slideUp 0.3s;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 @keyframes slideUp {
@@ -695,8 +700,10 @@ body {
     color: white;
 }
 
-.modal-header h2 {
+.modal-header h2,
+.modal-header h3 {
     font-size: 20px;
+    margin: 0;
 }
 
 .close-btn {
