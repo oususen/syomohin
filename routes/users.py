@@ -34,6 +34,16 @@ def list_users():
             ORDER BY u.username
         """
         df = db.execute_query(query)
+
+        # Timestamp列を文字列に変換
+        if "created_at" in df.columns:
+            df["created_at"] = df["created_at"].dt.strftime("%Y-%m-%d %H:%M:%S")
+        if "last_login" in df.columns:
+            df["last_login"] = df["last_login"].dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        # NaTをNoneに変換
+        df = df.where(df.notna(), None)
+
         return jsonify({"success": True, "data": df.to_dict(orient="records")})
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
@@ -241,6 +251,14 @@ def list_roles():
                 END
             """
         )
+
+        # Timestamp列を文字列に変換
+        if "created_at" in df.columns:
+            df["created_at"] = df["created_at"].dt.strftime("%Y-%m-%d %H:%M:%S")
+
+        # NaTをNoneに変換
+        df = df.where(df.notna(), None)
+
         return jsonify({"success": True, "data": df.to_dict(orient="records")})
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
