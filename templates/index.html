@@ -190,32 +190,91 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- ユーザーにロールを割り当て -->
+                <h3 class="section-title" style="margin-top: 40px;">👤 ユーザーにロールを割り当て</h3>
+                <div class="filter-row" style="align-items: flex-end; gap: 12px;">
+                    <div class="filter-group" style="flex: 1; max-width: 300px;">
+                        <label for="assignUserSelect">ユーザー選択</label>
+                        <select id="assignUserSelect" class="input-field">
+                            <option value="">ユーザーを選択...</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" style="flex: 1; max-width: 300px;">
+                        <label for="assignRoleSelect">ロール選択</label>
+                        <select id="assignRoleSelect" class="input-field">
+                            <option value="">ロールを選択...</option>
+                        </select>
+                    </div>
+                    <button id="assignRoleBtn" class="btn btn-primary" onclick="assignRoleToUser()">🔄 ロール割り当て</button>
+                </div>
+
+                <!-- 選択したユーザーの現在のロール -->
+                <div id="currentUserRoles" style="margin-top: 20px; padding: 16px; background: #f5f5f5; border-radius: 8px; display: none;">
+                    <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #333;">現在のロール</h4>
+                    <div id="currentRolesList" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <!-- 現在のロールがここに表示される -->
+                    </div>
+                </div>
             </div>
         </div>
 
         <div id="usersPermissionsSection" class="detail-tab-content" data-user-content="permissions" hidden>
             <div class="form-container">
                 <h3 class="section-title">権限設定</h3>
-                <p style="color: #666; margin-bottom: 20px;">各ロールのページアクセス権限を管理します</p>
-                <div id="permissionsMatrix" class="table-container">
-                    <table class="employees-table">
-                        <thead>
-                            <tr>
-                                <th>ページ名</th>
-                                <th>一般</th>
-                                <th>リーダ</th>
-                                <th>班長</th>
-                                <th>係長</th>
-                                <th>課長</th>
-                                <th>部長</th>
-                            </tr>
-                        </thead>
-                        <tbody id="permissionsTableBody">
-                            <tr>
-                                <td colspan="7" class="loading">読み込み中...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <p style="color: #666; margin-bottom: 20px;">選択したロールのページアクセス権限を編集できます</p>
+
+                <!-- ロール選択 -->
+                <div class="filter-group" style="max-width: 300px; margin-bottom: 24px;">
+                    <label for="permissionRoleSelect">ロール選択</label>
+                    <select id="permissionRoleSelect" class="input-field" onchange="loadPermissionsForRole()">
+                        <option value="">ロールを選択...</option>
+                    </select>
+                </div>
+
+                <div id="permissionsEditorContainer" style="display: none;">
+                    <!-- ページ権限 -->
+                    <div style="margin-bottom: 32px;">
+                        <h4 style="margin: 0 0 16px 0; font-size: 16px; color: #333;">📄 ページ権限</h4>
+                        <div class="table-container">
+                            <table class="employees-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 200px;">ページ名</th>
+                                        <th style="width: 100px; text-align: center;">閲覧</th>
+                                        <th style="width: 100px; text-align: center;">編集</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pagePermissionsTableBody">
+                                    <!-- ページ権限がここに表示される -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- タブ権限 -->
+                    <div style="margin-bottom: 24px;">
+                        <h4 style="margin: 0 0 16px 0; font-size: 16px; color: #333;">📑 タブ権限</h4>
+                        <div class="table-container">
+                            <table class="employees-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 200px;">タブ名</th>
+                                        <th style="width: 100px; text-align: center;">閲覧</th>
+                                        <th style="width: 100px; text-align: center;">編集</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabPermissionsTableBody">
+                                    <!-- タブ権限がここに表示される -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 保存ボタン -->
+                    <div style="text-align: left;">
+                        <button id="savePermissionsBtn" class="btn btn-primary primary-action" onclick="savePermissions()">💾 ページ権限を保存</button>
+                    </div>
                 </div>
             </div>
         </div>

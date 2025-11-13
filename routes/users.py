@@ -243,3 +243,193 @@ def list_roles():
         return jsonify({"success": True, "data": df.to_dict(orient="records")})
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@users_bp.route("/api/users/<int:user_id>/roles", methods=["POST"])
+def assign_role_to_user(user_id: int):
+    """ユーザーにロールを割り当て（既存のロールに追加）"""
+    try:
+        data = request.get_json() or {}
+        role_id = data.get("role_id")
+
+        if not role_id:
+            return jsonify({"success": False, "error": "ロールIDが必要です"}), 400
+
+        db = get_db_manager()
+
+        # ユーザーの存在確認
+        user_df = db.execute_query("SELECT id FROM users WHERE id = :id", {"id": user_id})
+        if user_df.empty:
+            return jsonify({"success": False, "error": "ユーザーが見つかりません"}), 404
+
+        # ロールの存在確認
+        role_df = db.execute_query("SELECT id FROM roles WHERE id = :id", {"id": role_id})
+        if role_df.empty:
+            return jsonify({"success": False, "error": "ロールが見つかりません"}), 404
+
+        # 既に割り当て済みかチェック
+        existing_df = db.execute_query(
+            "SELECT * FROM user_roles WHERE user_id = :user_id AND role_id = :role_id",
+            {"user_id": user_id, "role_id": role_id},
+        )
+
+        if not existing_df.empty:
+            return jsonify({"success": False, "error": "このロールは既に割り当てられています"}), 400
+
+        # ロールを割り当て
+        db.execute_update(
+            "INSERT INTO user_roles (user_id, role_id) VALUES (:user_id, :role_id)",
+            {"user_id": user_id, "role_id": role_id},
+        )
+
+        return jsonify({"success": True, "message": "ロールを割り当てました"})
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@users_bp.route("/api/permissions/<int:role_id>", methods=["GET"])
+def get_permissions(role_id: int):
+    """ロールの権限を取得"""
+    try:
+        db = get_db_manager()
+
+        # ロールの存在確認
+        role_df = db.execute_query("SELECT id FROM roles WHERE id = :id", {"id": role_id})
+        if role_df.empty:
+            return jsonify({"success": False, "error": "ロールが見つかりません"}), 404
+
+        # ページ権限を取得
+        page_perms_df = db.execute_query(
+            """
+            SELECT page_name, can_view, can_edit
+            FROM page_permissions
+            WHERE role_id = :role_id
+            ORDER BY page_name
+            """,
+            {"role_id": role_id},
+        )
+
+        # タブ権限を取得
+        tab_perms_df = db.execute_query(
+            """
+            SELECT tab_name, can_view, can_edit
+            FROM tab_permissions
+            WHERE role_id = :role_id
+            ORDER BY tab_name
+            """,
+            {"role_id": role_id},
+        )
+
+        return jsonify(
+            {
+                "success": True,
+                "page_permissions": page_perms_df.to_dict(orient="records"),
+                "tab_permissions": tab_perms_df.to_dict(orient="records"),
+            }
+        )
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@users_bp.route("/api/permissions/<int:role_id>", methods=["PUT"])
+def update_permissions(role_id: int):
+    """ロールの権限を更新"""
+    try:
+        data = request.get_json() or {}
+        page_permissions = data.get("page_permissions", [])
+        tab_permissions = data.get("tab_permissions", [])
+
+        db = get_db_manager()
+
+        # ロールの存在確認
+        role_df = db.execute_query("SELECT id FROM roles WHERE id = :id", {"id": role_id})
+        if role_df.empty:
+            return jsonify({"success": False, "error": "ロールが見つかりません"}), 404
+
+        # ページ権限を更新
+        for perm in page_permissions:
+            page_name = perm.get("page_name")
+            can_view = perm.get("can_view", 0)
+            can_edit = perm.get("can_edit", 0)
+
+            # 既存の権限をチェック
+            existing_df = db.execute_query(
+                "SELECT id FROM page_permissions WHERE role_id = :role_id AND page_name = :page_name",
+                {"role_id": role_id, "page_name": page_name},
+            )
+
+            if existing_df.empty:
+                # 新規追加
+                db.execute_update(
+                    """
+                    INSERT INTO page_permissions (role_id, page_name, can_view, can_edit)
+                    VALUES (:role_id, :page_name, :can_view, :can_edit)
+                    """,
+                    {
+                        "role_id": role_id,
+                        "page_name": page_name,
+                        "can_view": can_view,
+                        "can_edit": can_edit,
+                    },
+                )
+            else:
+                # 更新
+                db.execute_update(
+                    """
+                    UPDATE page_permissions
+                    SET can_view = :can_view, can_edit = :can_edit
+                    WHERE role_id = :role_id AND page_name = :page_name
+                    """,
+                    {
+                        "role_id": role_id,
+                        "page_name": page_name,
+                        "can_view": can_view,
+                        "can_edit": can_edit,
+                    },
+                )
+
+        # タブ権限を更新
+        for perm in tab_permissions:
+            tab_name = perm.get("tab_name")
+            can_view = perm.get("can_view", 0)
+            can_edit = perm.get("can_edit", 0)
+
+            # 既存の権限をチェック
+            existing_df = db.execute_query(
+                "SELECT id FROM tab_permissions WHERE role_id = :role_id AND tab_name = :tab_name",
+                {"role_id": role_id, "tab_name": tab_name},
+            )
+
+            if existing_df.empty:
+                # 新規追加
+                db.execute_update(
+                    """
+                    INSERT INTO tab_permissions (role_id, tab_name, can_view, can_edit)
+                    VALUES (:role_id, :tab_name, :can_view, :can_edit)
+                    """,
+                    {
+                        "role_id": role_id,
+                        "tab_name": tab_name,
+                        "can_view": can_view,
+                        "can_edit": can_edit,
+                    },
+                )
+            else:
+                # 更新
+                db.execute_update(
+                    """
+                    UPDATE tab_permissions
+                    SET can_view = :can_view, can_edit = :can_edit
+                    WHERE role_id = :role_id AND tab_name = :tab_name
+                    """,
+                    {
+                        "role_id": role_id,
+                        "tab_name": tab_name,
+                        "can_view": can_view,
+                        "can_edit": can_edit,
+                    },
+                )
+
+        return jsonify({"success": True, "message": "権限を更新しました"})
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500

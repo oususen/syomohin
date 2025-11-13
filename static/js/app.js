@@ -3399,6 +3399,8 @@ async function loadRolesList() {
 
         if (rolesData.success && usersData.success) {
             displayRolesList(rolesData.data, usersData.data);
+            // ドロップダウンを設定
+            populateAssignmentDropdowns(rolesData.data, usersData.data);
         } else {
             showError('ロール一覧の取得に失敗しました');
         }
@@ -3449,7 +3451,8 @@ async function loadPermissionsMatrix() {
         const data = await response.json();
 
         if (data.success) {
-            displayPermissionsMatrix(data.data);
+            // ロール選択ドロップダウンを設定
+            populatePermissionRoleSelect(data.data);
         } else {
             showError('権限設定の取得に失敗しました');
         }
@@ -3512,6 +3515,209 @@ function determineAccess(roleName, pageName) {
     };
 
     return permissions[roleName]?.includes(pageName) || false;
+}
+
+// ロール割り当て用のドロップダウンを設定
+function populateAssignmentDropdowns(roles, users) {
+    const userSelect = document.getElementById('assignUserSelect');
+    const roleSelect = document.getElementById('assignRoleSelect');
+
+    // ユーザードロップダウン
+    userSelect.innerHTML = '<option value="">ユーザーを選択...</option>' +
+        users.map(user => `<option value="${user.id}" data-roles="${user.roles || ''}">${user.full_name} (${user.username})</option>`).join('');
+
+    // ロールドロップダウン
+    roleSelect.innerHTML = '<option value="">ロールを選択...</option>' +
+        roles.map(role => `<option value="${role.id}">${role.role_name}</option>`).join('');
+
+    // ユーザー選択時に現在のロールを表示
+    userSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        const roles = selectedOption.getAttribute('data-roles');
+        showCurrentUserRoles(roles);
+    });
+}
+
+// 選択したユーザーの現在のロールを表示
+function showCurrentUserRoles(rolesStr) {
+    const container = document.getElementById('currentUserRoles');
+    const rolesList = document.getElementById('currentRolesList');
+
+    if (!rolesStr) {
+        container.style.display = 'none';
+        return;
+    }
+
+    const roles = rolesStr.split(', ');
+    rolesList.innerHTML = roles.map(role =>
+        `<span style="padding: 6px 12px; background: #e3f2fd; color: #1976d2; border-radius: 4px; font-size: 13px;">${role}</span>`
+    ).join('');
+    container.style.display = 'block';
+}
+
+// ユーザーにロールを割り当て
+async function assignRoleToUser() {
+    const userId = document.getElementById('assignUserSelect').value;
+    const roleId = document.getElementById('assignRoleSelect').value;
+
+    if (!userId || !roleId) {
+        showError('ユーザーとロールを選択してください');
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/users/${userId}/roles`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role_id: parseInt(roleId) })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSuccess('ロールを割り当てました');
+            // リストを再読み込み
+            await loadRolesList();
+        } else {
+            showError(data.error || 'ロールの割り当てに失敗しました');
+        }
+    } catch (error) {
+        console.error('ロール割り当てエラー:', error);
+        showError('ロールの割り当てに失敗しました');
+    }
+}
+
+// 権限設定用のロールドロップダウンを設定
+function populatePermissionRoleSelect(roles) {
+    const select = document.getElementById('permissionRoleSelect');
+    select.innerHTML = '<option value="">ロールを選択...</option>' +
+        roles.map(role => `<option value="${role.id}" data-role-name="${role.role_name}">${role.role_name}</option>`).join('');
+}
+
+// 選択したロールの権限を読み込み
+async function loadPermissionsForRole() {
+    const select = document.getElementById('permissionRoleSelect');
+    const roleId = select.value;
+
+    if (!roleId) {
+        document.getElementById('permissionsEditorContainer').style.display = 'none';
+        return;
+    }
+
+    const roleName = select.options[select.selectedIndex].getAttribute('data-role-name');
+
+    try {
+        const response = await fetch(`/api/permissions/${roleId}`);
+        const data = await response.json();
+
+        if (data.success) {
+            displayPermissionsEditor(roleName, data.page_permissions, data.tab_permissions);
+        } else {
+            showError('権限の取得に失敗しました');
+        }
+    } catch (error) {
+        console.error('権限取得エラー:', error);
+        showError('権限の取得に失敗しました');
+    }
+}
+
+// 権限編集画面を表示
+function displayPermissionsEditor(roleName, pagePermissions, tabPermissions) {
+    const container = document.getElementById('permissionsEditorContainer');
+    const pageTableBody = document.getElementById('pagePermissionsTableBody');
+    const tabTableBody = document.getElementById('tabPermissionsTableBody');
+
+    // ページ権限
+    const pages = [
+        '在庫一覧', '消耗品管理', '出庫', '入庫', '注文依頼',
+        '発注状態', '発注', '購入先管理', '従業員管理', 'ユーザー管理', '履歴'
+    ];
+
+    pageTableBody.innerHTML = pages.map(pageName => {
+        const perm = pagePermissions.find(p => p.page_name === pageName) || { can_view: 0, can_edit: 0 };
+        return `
+            <tr>
+                <td><strong>${pageName}</strong></td>
+                <td style="text-align: center;">
+                    <input type="checkbox" data-page="${pageName}" data-type="view" ${perm.can_view ? 'checked' : ''}>
+                </td>
+                <td style="text-align: center;">
+                    <input type="checkbox" data-page="${pageName}" data-type="edit" ${perm.can_edit ? 'checked' : ''}>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    // タブ権限
+    const tabs = ['新規登録', '個別編集', '一括編集', 'CSV取込'];
+
+    tabTableBody.innerHTML = tabs.map(tabName => {
+        const perm = tabPermissions.find(t => t.tab_name === tabName) || { can_view: 0, can_edit: 0 };
+        return `
+            <tr>
+                <td><strong>${tabName}</strong></td>
+                <td style="text-align: center;">
+                    <input type="checkbox" data-tab="${tabName}" data-type="view" ${perm.can_view ? 'checked' : ''}>
+                </td>
+                <td style="text-align: center;">
+                    <input type="checkbox" data-tab="${tabName}" data-type="edit" ${perm.can_edit ? 'checked' : ''}>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    container.style.display = 'block';
+}
+
+// 権限を保存
+async function savePermissions() {
+    const select = document.getElementById('permissionRoleSelect');
+    const roleId = select.value;
+
+    if (!roleId) {
+        showError('ロールを選択してください');
+        return;
+    }
+
+    // ページ権限を収集
+    const pagePermissions = [];
+    document.querySelectorAll('#pagePermissionsTableBody tr').forEach(row => {
+        const pageName = row.querySelector('td strong').textContent;
+        const canView = row.querySelector('input[data-type="view"]').checked ? 1 : 0;
+        const canEdit = row.querySelector('input[data-type="edit"]').checked ? 1 : 0;
+        pagePermissions.push({ page_name: pageName, can_view: canView, can_edit: canEdit });
+    });
+
+    // タブ権限を収集
+    const tabPermissions = [];
+    document.querySelectorAll('#tabPermissionsTableBody tr').forEach(row => {
+        const tabName = row.querySelector('td strong').textContent;
+        const canView = row.querySelector('input[data-type="view"]').checked ? 1 : 0;
+        const canEdit = row.querySelector('input[data-type="edit"]').checked ? 1 : 0;
+        tabPermissions.push({ tab_name: tabName, can_view: canView, can_edit: canEdit });
+    });
+
+    try {
+        const response = await fetch(`/api/permissions/${roleId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                page_permissions: pagePermissions,
+                tab_permissions: tabPermissions
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSuccess('権限を保存しました');
+        } else {
+            showError(data.error || '権限の保存に失敗しました');
+        }
+    } catch (error) {
+        console.error('権限保存エラー:', error);
+        showError('権限の保存に失敗しました');
+    }
 }
 
 
