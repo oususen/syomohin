@@ -8,7 +8,30 @@ let editGalleryCache = [];
 let editGalleryLoaded = false;
 let currentEditItemId = null;
 let currentQrTarget = null; // 現在QRコードを入力しようとしているフィールド
+let currentUserInfo = null;
+let pagePermissionMap = {};
+let tabPermissionMap = {};
 const DEFAULT_SHORTAGE_STATUSES = ['欠品', '要注意', '在庫あり'];
+const NAV_DISPLAY_ORDER = ['inventory', 'register', 'operations', 'dispatch', 'suppliers', 'employees', 'users'];
+const OPERATION_SUBTABS = ['inbound', 'outbound', 'history'];
+const DISPATCH_SUBTABS = ['requests', 'create', 'send'];
+const PAGE_PERMISSION_RULES = {
+    inventory: ['在庫一覧'],
+    register: ['消耗品管理'],
+    operations: ['入庫', '出庫', '履歴'],
+    inbound: ['入庫'],
+    outbound: ['出庫'],
+    history: ['履歴'],
+    order: ['注文依頼'],
+    'order-list': ['発注状態'],
+    dispatch: ['発注'],
+    requests: ['発注'],
+    create: ['発注'],
+    send: ['発注'],
+    suppliers: ['購入先管理'],
+    employees: ['従業員管理'],
+    users: ['ユーザー管理']
+};
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', () => {
@@ -137,42 +160,53 @@ function setupEventListeners() {
 
 // ページ切り替え
 function switchPage(page) {
+    if (!isPageAccessible(page)) {
+        showError('このページを表示する権限がありません');
+        return;
+    }
+
     currentPage = page;
 
     // ナビゲーションボタンのactive状態を更新
     document.querySelectorAll('.nav-btn').forEach(btn => {
-        btn.classList.remove('active');
+        btn.classList.toggle('active', btn.dataset.page === page);
     });
-    document.querySelector(`[data-page="${page}"]`).classList.add('active');
-
 
     // すべてのサブタブコンテナを非表示
     document.querySelectorAll('.subtab-container').forEach(container => {
         container.style.display = 'none';
     });
 
-    // 入出庫タブの場合、サブタブを表示
+    // 入出庫タブの場合、表示できるサブタブを優先的に開く
     if (page === 'operations') {
         const subtabContainer = document.getElementById('operationsSubtabContainer');
         if (subtabContainer) {
             subtabContainer.style.display = 'block';
         }
-        // デフォルトで入庫を表示
+        const defaultSubtab = getFirstAllowedOperationsSubtab();
+        if (!defaultSubtab) {
+            showError('入出庫ページの権限がありません');
+            return;
+        }
         if (typeof switchOperationsSubtab === 'function') {
-            switchOperationsSubtab('inbound');
+            switchOperationsSubtab(defaultSubtab);
         }
         return;
     }
 
-    // 発注タブの場合、サブタブを表示
+    // 発注タブの場合、表示できるサブタブを優先的に開く
     if (page === 'dispatch') {
         const subtabContainer = document.getElementById('dispatchSubtabContainer');
         if (subtabContainer) {
             subtabContainer.style.display = 'block';
         }
-        // デフォルトで依頼管理を表示
+        const defaultSubtab = getFirstAllowedDispatchSubtab();
+        if (!defaultSubtab) {
+            showError('発注ページの権限がありません');
+            return;
+        }
         if (typeof switchDispatchSubtab === 'function') {
-            switchDispatchSubtab('requests');
+            switchDispatchSubtab(defaultSubtab);
         }
         return;
     }
@@ -196,7 +230,13 @@ function switchPage(page) {
         'users': 'usersPage'
     };
 
-    document.getElementById(pageMap[page]).classList.add('active');
+    const targetId = pageMap[page];
+    if (targetId) {
+        const targetPage = document.getElementById(targetId);
+        if (targetPage) {
+            targetPage.classList.add('active');
+        }
+    }
 
     // ページタイトルを更新
     const titles = {
@@ -213,7 +253,9 @@ function switchPage(page) {
         'employees': '👤 従業員管理',
         'users': '👤 ユーザー管理'
     };
-    document.getElementById('pageTitle').textContent = titles[page];
+    if (titles[page]) {
+        document.getElementById('pageTitle').textContent = titles[page];
+    }
 
     // ページごとの初期化処理
     if (page === 'register') {
@@ -301,8 +343,16 @@ async function loadCurrentUser() {
         const data = await response.json();
 
         if (data.success) {
-            const userName = data.user.full_name || data.user.username;
-            document.getElementById('currentUserName').textContent = `👤 ${userName}`;
+            currentUserInfo = data.user || {};
+            pagePermissionMap = buildPermissionMap(currentUserInfo.page_permissions || [], 'page_name');
+            tabPermissionMap = buildPermissionMap(currentUserInfo.tab_permissions || [], 'tab_name');
+
+            const userName = currentUserInfo.full_name || currentUserInfo.username || 'ユーザー';
+            const rolesText = (currentUserInfo.roles || '').trim();
+            const roleLabel = rolesText ? `（${rolesText}）` : '';
+            document.getElementById('currentUserName').textContent = `👤 ${userName}${roleLabel}`;
+
+            applyPagePermissions();
         } else {
             // ログインしていない場合はログインページへ
             window.location.href = '/login';
@@ -311,6 +361,109 @@ async function loadCurrentUser() {
         console.error('ユーザー情報取得エラー:', error);
         window.location.href = '/login';
     }
+}
+
+function buildPermissionMap(items, keyField) {
+    const map = {};
+    if (!Array.isArray(items)) {
+        return map;
+    }
+    items.forEach(item => {
+        const key = item[keyField];
+        if (!key) return;
+        map[key] = {
+            can_view: Boolean(Number(item.can_view)),
+            can_edit: Boolean(Number(item.can_edit))
+        };
+    });
+    return map;
+}
+
+function hasPagePermission(pageName, action = 'view') {
+    if (!pageName) return false;
+    const permission = pagePermissionMap[pageName];
+    if (!permission) return false;
+    return action === 'edit' ? Boolean(permission.can_edit) : Boolean(permission.can_view);
+}
+
+function requirementSatisfied(requirements) {
+    if (!requirements) return true;
+    const names = Array.isArray(requirements) ? requirements : [requirements];
+    return names.some(name => hasPagePermission(name));
+}
+
+function isPageAccessible(pageKey) {
+    if (!pageKey) return true;
+    const requirement = PAGE_PERMISSION_RULES[pageKey];
+    if (!requirement) return true;
+    return requirementSatisfied(requirement);
+}
+
+function getFirstAccessibleNavPage() {
+    for (const key of NAV_DISPLAY_ORDER) {
+        if (isPageAccessible(key)) {
+            return key;
+        }
+    }
+    return null;
+}
+
+function getFirstAllowedOperationsSubtab() {
+    for (const key of OPERATION_SUBTABS) {
+        if (isPageAccessible(key)) {
+            return key;
+        }
+    }
+    return null;
+}
+
+function getFirstAllowedDispatchSubtab() {
+    for (const key of DISPATCH_SUBTABS) {
+        if (isPageAccessible(key)) {
+            return key;
+        }
+    }
+    return null;
+}
+
+function applyPagePermissions() {
+    const navButtons = document.querySelectorAll('.nav-btn');
+    navButtons.forEach(btn => {
+        const pageKey = btn.dataset.page;
+        const canView = isPageAccessible(pageKey);
+        btn.style.display = canView ? '' : 'none';
+        btn.disabled = !canView;
+    });
+
+    updateOperationsSubtabVisibility();
+    updateDispatchSubtabVisibility();
+
+    if (!isPageAccessible(currentPage)) {
+        const fallback = getFirstAccessibleNavPage();
+        if (fallback) {
+            switchPage(fallback);
+        } else {
+            showError('表示できるページがありません。管理者にお問い合わせください。');
+        }
+    }
+}
+
+function updateOperationsSubtabVisibility() {
+    document.querySelectorAll('#operationsSubtabContainer .subtab-btn').forEach(btn => {
+        const subtabKey = btn.dataset.subtab;
+        const canView = isPageAccessible(subtabKey);
+        btn.style.display = canView ? '' : 'none';
+        btn.disabled = !canView;
+    });
+}
+
+function updateDispatchSubtabVisibility() {
+    document.querySelectorAll('#dispatchSubtabContainer .subtab-btn').forEach(btn => {
+        const subtabKey = btn.dataset.subtab;
+        const canView = isPageAccessible(subtabKey);
+        btn.style.display = canView ? '' : 'none';
+        btn.disabled = !canView;
+    });
 }
 
 // ログアウト
@@ -459,5 +612,3 @@ function buildImageUrl(imagePath) {
 
     return '/uploads/' + pathStr;
 }
-
-

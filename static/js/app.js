@@ -290,6 +290,18 @@ async function deleteSupplier(id, name) {
 
 // 入出庫サブタブの切り替え
 function switchOperationsSubtab(subtab) {
+    if (typeof isPageAccessible === 'function' && !isPageAccessible(subtab)) {
+        const fallback = typeof getFirstAllowedOperationsSubtab === 'function'
+            ? getFirstAllowedOperationsSubtab()
+            : null;
+        if (fallback && fallback !== subtab) {
+            switchOperationsSubtab(fallback);
+        } else {
+            showError('この入出庫タブを表示する権限がありません');
+        }
+        return;
+    }
+
     // すべてのページコンテンツを非表示
     document.querySelectorAll('.page-content').forEach(content => {
         content.classList.remove('active');
@@ -358,6 +370,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // 発注サブタブの切り替え
 function switchDispatchSubtab(subtab) {
+    if (typeof isPageAccessible === 'function' && !isPageAccessible(subtab)) {
+        const fallback = typeof getFirstAllowedDispatchSubtab === 'function'
+            ? getFirstAllowedDispatchSubtab()
+            : null;
+        if (fallback && fallback !== subtab) {
+            switchDispatchSubtab(fallback);
+        } else {
+            showError('この発注タブを表示する権限がありません');
+        }
+        return;
+    }
+
     // すべてのページコンテンツを非表示
     document.querySelectorAll('.page-content').forEach(content => {
         content.classList.remove('active');

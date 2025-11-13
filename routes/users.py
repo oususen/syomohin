@@ -557,6 +557,43 @@ def get_current_user():
             return jsonify({"success": False, "error": "ユーザーが見つかりません"}), 404
 
         user_data = user_df.iloc[0].to_dict()
+
+        # 権限情報を集計（複数ロールを持つ場合は最大権限を採用）
+        page_perms_df = db.execute_query(
+            """
+            SELECT
+                pp.page_name,
+                MAX(pp.can_view) AS can_view,
+                MAX(pp.can_edit) AS can_edit
+            FROM user_roles ur
+            JOIN page_permissions pp ON ur.role_id = pp.role_id
+            WHERE ur.user_id = :user_id
+            GROUP BY pp.page_name
+            """,
+            {"user_id": session["user_id"]},
+        )
+
+        tab_perms_df = db.execute_query(
+            """
+            SELECT
+                tp.tab_name,
+                MAX(tp.can_view) AS can_view,
+                MAX(tp.can_edit) AS can_edit
+            FROM user_roles ur
+            JOIN tab_permissions tp ON ur.role_id = tp.role_id
+            WHERE ur.user_id = :user_id
+            GROUP BY tp.tab_name
+            """,
+            {"user_id": session["user_id"]},
+        )
+
+        user_data["page_permissions"] = (
+            page_perms_df.to_dict(orient="records") if not page_perms_df.empty else []
+        )
+        user_data["tab_permissions"] = (
+            tab_perms_df.to_dict(orient="records") if not tab_perms_df.empty else []
+        )
+
         return jsonify({"success": True, "user": user_data})
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
