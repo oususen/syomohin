@@ -105,8 +105,9 @@ function showAddDirectOrderModal() {
         document.getElementById('directOrderCodeFilter').value = '';
         document.getElementById('directOrderNameFilter').value = '';
         document.getElementById('directOrderShortageFilter').value = 'すべて';
-        document.getElementById('directOrderGallery').innerHTML = '<p style="color: #666; text-align: center;">検索ボタンをクリックして消耗品を表示してください</p>';
         document.getElementById('directOrderForm').style.display = 'none';
+        // モーダルを開いた時に自動的に全商品を検索して表示
+        searchDirectOrderConsumables();
     }
 }
 
@@ -166,27 +167,56 @@ function renderDirectOrderGallery(items) {
     const gallery = document.getElementById('directOrderGallery');
 
     gallery.innerHTML = `
-        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 20px;">
             ${items.map(item => {
                 const imagePath = item.image_path ? buildImageUrl(item.image_path) : '';
                 const isShortage = item.is_shortage === 1 || item.is_shortage === true;
+                const orderStatus = item.order_status || '-';
+                const stockStatus = isShortage ? '欠品' : '在庫あり';
 
                 return `
-                    <div class="consumable-card" style="border: 1px solid #ddd; border-radius: 8px; padding: 12px; background: white; cursor: pointer; transition: all 0.2s;"
-                         onclick="selectConsumableForDirectOrder(${item.id}, '${escapeHtml(item.code || '')}', '${escapeHtml(item.name || '')}', '${escapeHtml(item.unit || '')}', ${item.unit_price || 0}, '${escapeHtml(item.supplier_name || '-')}')"
-                         onmouseover="this.style.boxShadow='0 4px 8px rgba(0,0,0,0.1)'; this.style.transform='translateY(-2px)';"
-                         onmouseout="this.style.boxShadow='none'; this.style.transform='translateY(0)';">
-                        <div style="position: relative; width: 100%; height: 150px; background: #f5f5f5; border-radius: 4px; overflow: hidden; margin-bottom: 8px;">
+                    <div class="consumable-card" style="border: 1px solid #ddd; border-radius: 12px; padding: 16px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <!-- 画像エリア -->
+                        <div style="position: relative; width: 100%; height: 200px; background: #f5f5f5; border-radius: 8px; overflow: hidden; margin-bottom: 16px;">
                             ${imagePath ?
-                                `<img src="${imagePath}" alt="${escapeHtml(item.name)}" style="width: 100%; height: 100%; object-fit: cover;">` :
-                                `<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999; font-size: 48px;">📦</div>`
+                                `<img src="${imagePath}" alt="${escapeHtml(item.name)}" style="width: 100%; height: 100%; object-fit: contain;">` :
+                                `<div style="display: flex; align-items: center; justify-content: center; height: 100%; color: #999; font-size: 64px;">📦</div>`
                             }
-                            ${isShortage ? '<span style="position: absolute; top: 8px; right: 8px; background: #d32f2f; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: bold;">欠品</span>' : ''}
+                            ${isShortage ? '<span style="position: absolute; top: 12px; right: 12px; background: #d32f2f; color: white; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: bold;">欠品</span>' : ''}
                         </div>
-                        <div style="font-weight: bold; font-size: 14px; margin-bottom: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(item.name)}">${escapeHtml(item.name)}</div>
-                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">コード: ${escapeHtml(item.code)}</div>
-                        <div style="font-size: 12px; color: #666; margin-bottom: 4px;">在庫: ${item.stock_quantity || 0} ${escapeHtml(item.unit || '')}</div>
-                        <div style="font-size: 12px; color: #009688; font-weight: bold;">¥${(item.unit_price || 0).toLocaleString()}</div>
+
+                        <!-- 商品名 -->
+                        <h3 style="font-size: 18px; font-weight: bold; margin: 0 0 12px 0; color: #333;">${escapeHtml(item.name)}</h3>
+
+                        <!-- 商品詳細 -->
+                        <div style="background: #f9f9f9; border-radius: 6px; padding: 12px; margin-bottom: 16px;">
+                            <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px; font-size: 13px; line-height: 1.6;">
+                                <span style="color: #666;">コード:</span><span style="font-weight: 500;">${escapeHtml(item.code)}</span>
+                                <span style="color: #666;">購入先:</span><span style="font-weight: 500;">${escapeHtml(item.supplier_name || '-')}</span>
+                                <span style="color: #666;">単価:</span><span style="font-weight: 500; color: #009688;">¥${(item.unit_price || 0).toLocaleString()}</span>
+                                <span style="color: #666;">在庫数:</span><span style="font-weight: 500;">${item.stock_quantity || 0} ${escapeHtml(item.unit || '')}</span>
+                                <span style="color: #666;">安全在庫:</span><span style="font-weight: 500;">${item.min_stock_quantity || 0} ${escapeHtml(item.unit || '')}</span>
+                                <span style="color: #666;">在庫状態:</span><span style="font-weight: 500; color: ${isShortage ? '#d32f2f' : '#4caf50'};">${stockStatus}</span>
+                                <span style="color: #666;">注文状態:</span><span style="font-weight: 500;">${orderStatus}</span>
+                            </div>
+                        </div>
+
+                        <!-- 数量入力と追加ボタン -->
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <div style="flex: 1;">
+                                <label style="display: block; font-size: 12px; color: #666; margin-bottom: 4px;">数量</label>
+                                <input type="number" id="qty_${item.id}" min="1" value="1"
+                                       style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px;"
+                                       onclick="event.stopPropagation();">
+                            </div>
+                            <div style="flex: 2; padding-top: 20px;">
+                                <button class="btn btn-primary"
+                                        onclick="addDirectOrderFromCard(${item.id}, '${escapeHtml(item.code || '')}', '${escapeHtml(item.name || '')}', '${escapeHtml(item.unit || '')}', ${item.unit_price || 0}, '${escapeHtml(item.supplier_name || '-')}')"
+                                        style="width: 100%; padding: 10px; font-size: 14px; font-weight: bold;">
+                                    ➕ 発注準備に追加
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 `;
             }).join('')}
@@ -213,6 +243,43 @@ function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
+}
+
+// カードから直接発注準備に追加
+async function addDirectOrderFromCard(consumableId, code, name, unit, unitPrice, supplierName) {
+    const qtyInput = document.getElementById(`qty_${consumableId}`);
+    const quantity = parseInt(qtyInput.value) || 1;
+
+    if (quantity < 1) {
+        showError('数量は1以上を入力してください');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/orders/add-to-dispatch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                consumable_id: consumableId,
+                quantity: quantity,
+                deadline: '通常',
+                note: ''
+            })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            showSuccess(`${name} を発注準備に追加しました`);
+            // 数量をリセット
+            qtyInput.value = 1;
+        } else {
+            showError(result.error || '追加に失敗しました');
+        }
+    } catch (error) {
+        console.error('add to dispatch error:', error);
+        showError('追加に失敗しました');
+    }
 }
 
 function selectConsumableForDirectOrder(id, code, name, unit, unitPrice, supplierName) {
