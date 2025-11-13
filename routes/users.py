@@ -241,12 +241,13 @@ def list_roles():
             FROM roles
             ORDER BY
                 CASE role_name
-                    WHEN '部長' THEN 1
-                    WHEN '課長' THEN 2
-                    WHEN '係長' THEN 3
-                    WHEN '班長' THEN 4
-                    WHEN 'リーダ' THEN 5
-                    WHEN '一般' THEN 6
+                    WHEN 'システム管理者' THEN 1
+                    WHEN '部長' THEN 2
+                    WHEN '課長' THEN 3
+                    WHEN '係長' THEN 4
+                    WHEN '班長' THEN 5
+                    WHEN 'リーダ' THEN 6
+                    WHEN '一般' THEN 7
                     ELSE 99
                 END
             """

@@ -85,13 +85,29 @@ def insert_page_permissions():
         ('履歴', 1, 1)
     ]
 
+    # システム管理者の権限（フルアクセス）
+    sysadmin_permissions = [
+        ('在庫一覧', 1, 1),
+        ('消耗品管理', 1, 1),
+        ('出庫', 1, 1),
+        ('入庫', 1, 1),
+        ('注文依頼', 1, 1),
+        ('発注状態', 1, 1),
+        ('発注', 1, 1),
+        ('購入先管理', 1, 1),
+        ('従業員管理', 1, 1),
+        ('ユーザー管理', 1, 1),
+        ('履歴', 1, 1)
+    ]
+
     permissions_map = {
         '一般': general_permissions,
         'リーダ': leader_permissions,
         '班長': hancho_permissions,
         '係長': kakarich_permissions,
         '課長': kacho_permissions,
-        '部長': bucho_permissions
+        '部長': bucho_permissions,
+        'システム管理者': sysadmin_permissions
     }
 
     total_inserted = 0
