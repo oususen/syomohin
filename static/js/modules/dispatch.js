@@ -494,6 +494,15 @@ async function createDispatchOrder(supplierId, supplierName) {
 
         if (createData.success) {
             showSuccess(`注文書 ${createData.order_number} を作成しました`);
+
+            // PDF表示
+            if (createData.dispatch_order_id) {
+                const viewConfirm = confirm('注文書PDFを表示しますか？');
+                if (viewConfirm) {
+                    downloadPurchaseOrderPDF(createData.dispatch_order_id, createData.order_number);
+                }
+            }
+
             loadDispatchItems(); // 発注準備リストを更新
         } else {
             showError(createData.error || '注文書の作成に失敗しました');
@@ -502,6 +511,22 @@ async function createDispatchOrder(supplierId, supplierName) {
         console.error('Error creating dispatch order:', error);
         showError('注文書の作成に失敗しました');
     }
+}
+
+// 注文書PDFを新しいタブで開く
+function downloadPurchaseOrderPDF(orderId, orderNumber) {
+    // 新しいタブでPDFを開く
+    window.open(`/api/dispatch/orders/${orderId}/pdf`, '_blank');
+}
+
+// 注文書PDFを直接ダウンロード
+function forceDownloadPDF(orderId, orderNumber) {
+    const link = document.createElement('a');
+    link.href = `/api/dispatch/orders/${orderId}/pdf/download`;
+    link.download = `${orderNumber}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }
 
 
@@ -540,6 +565,9 @@ async function loadDispatchOrders() {
                     <button class="btn-small btn-edit" onclick="showDispatchOrderDetail(${order.id})" title="詳細">
                         👁
                     </button>
+                    <button class="btn-small btn-primary" onclick="downloadPurchaseOrderPDF(${order.id}, '${order.order_number}')" title="PDFダウンロード">
+                        📄
+                    </button>
                     ${order.status === '未送信' ? `
                         <button class="btn-small btn-primary" onclick="showSendOrderModal(${order.id}, '${order.supplier_name}')" title="送信">
                             📧
@@ -576,7 +604,12 @@ async function showDispatchOrderDetail(orderId) {
 
         content.innerHTML = `
             <div class="form-container">
-                <h4 style="margin-top: 0;">注文書情報</h4>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h4 style="margin: 0;">注文書情報</h4>
+                    <button class="btn btn-primary" onclick="downloadPurchaseOrderPDF(${orderId}, '${order.order_number}')">
+                        📄 PDFダウンロード
+                    </button>
+                </div>
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
                     <div><strong>注文書番号:</strong> ${order.order_number}</div>
                     <div><strong>購入先:</strong> ${order.supplier_name}</div>

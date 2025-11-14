@@ -3,11 +3,13 @@
 """
 from __future__ import annotations
 
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request, session, send_file
 from datetime import datetime
 import pandas as pd
+import os
 
 from database_manager import get_db_manager
+from pdf_generator import generate_purchase_order_pdf
 
 dispatch_bp = Blueprint("dispatch", __name__)
 
@@ -47,9 +49,11 @@ def get_pending_orders():
         """
         df = db.execute_query(query)
 
-        # Timestamp列を文字列に変換
-        if "requested_date" in df.columns:
-            df["requested_date"] = df["requested_date"].dt.strftime("%Y-%m-%d %H:%M:%S")
+        # Timestamp列を文字列に変換（NULL値を考慮）
+        if "requested_date" in df.columns and not df.empty:
+            df["requested_date"] = df["requested_date"].apply(
+                lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(x) else None
+            )
 
         # NaTをNoneに変換
         df = df.where(df.notna(), None)
@@ -281,7 +285,7 @@ def create_dispatch_order():
 
         # 購入先情報を取得
         supplier_df = db.execute_query(
-            "SELECT name FROM suppliers WHERE id = :id",
+            "SELECT name, contact_person FROM suppliers WHERE id = :id",
             {"id": supplier_id}
         )
 
@@ -289,6 +293,7 @@ def create_dispatch_order():
             return jsonify({"success": False, "error": "購入先が見つかりません"}), 404
 
         supplier_name = supplier_df.iloc[0]["name"]
+        contact_person = supplier_df.iloc[0]["contact_person"] if pd.notna(supplier_df.iloc[0]["contact_person"]) else ""
 
         # 注文書番号を生成
         today = datetime.now().strftime("%Y%m%d")
@@ -317,34 +322,65 @@ def create_dispatch_order():
         if items_df.empty:
             return jsonify({"success": False, "error": "有効なアイテムが見つかりません"}), 404
 
-        # 合計計算
-        total_items = len(items_df)
-        total_amount = items_df["total_amount"].sum()
+        # 合計計算（Python標準型に変換）
+        total_items = int(len(items_df))
+        total_amount = float(items_df["total_amount"].sum())
 
         # 現在のユーザー
         created_by = session.get("full_name", session.get("username", "システム"))
+
+        # PDFを先に生成
+        pdf_path = None
+        try:
+            order_data_for_pdf = {
+                "order_number": str(order_number),
+                "supplier_name": str(supplier_name),
+                "contact_person": str(contact_person) if contact_person else "",
+                "created_by": str(created_by),
+                "created_at": datetime.now(),
+                "note": str(note) if note else ""
+            }
+            # DataFrameをPython標準型の辞書リストに変換
+            items_for_pdf = []
+            for _, item in items_df.iterrows():
+                items_for_pdf.append({
+                    "code": str(item["code"]) if pd.notna(item["code"]) else "",
+                    "name": str(item["name"]) if pd.notna(item["name"]) else "",
+                    "quantity": int(item["quantity"]) if pd.notna(item["quantity"]) else 0,
+                    "unit": str(item["unit"]) if pd.notna(item["unit"]) else "",
+                    "unit_price": float(item["unit_price"]) if pd.notna(item["unit_price"]) else 0.0,
+                    "total_amount": float(item["total_amount"]) if pd.notna(item["total_amount"]) else 0.0,
+                    "deadline": str(item["deadline"]) if pd.notna(item["deadline"]) else "",
+                    "note": str(item["note"]) if pd.notna(item["note"]) else ""
+                })
+            pdf_path = generate_purchase_order_pdf(order_data_for_pdf, items_for_pdf)
+        except Exception as pdf_error:
+            print(f"PDF生成エラー: {pdf_error}")
+            import traceback
+            traceback.print_exc()
 
         # dispatch_ordersテーブルに注文書を作成
         db.execute_update(
             """
             INSERT INTO dispatch_orders (
                 order_number, supplier_id, supplier_name, total_items, total_amount,
-                status, created_by, note, created_at
+                status, created_by, note, created_at, pdf_path
             ) VALUES (
                 :order_number, :supplier_id, :supplier_name, :total_items, :total_amount,
-                :status, :created_by, :note, :created_at
+                :status, :created_by, :note, :created_at, :pdf_path
             )
             """,
             {
-                "order_number": order_number,
-                "supplier_id": supplier_id,
-                "supplier_name": supplier_name,
-                "total_items": total_items,
+                "order_number": str(order_number),
+                "supplier_id": int(supplier_id),
+                "supplier_name": str(supplier_name),
+                "total_items": int(total_items),
                 "total_amount": float(total_amount),
                 "status": "未送信",
-                "created_by": created_by,
-                "note": note,
-                "created_at": datetime.now()
+                "created_by": str(created_by),
+                "note": str(note) if note else "",
+                "created_at": datetime.now(),
+                "pdf_path": str(pdf_path) if pdf_path else None
             }
         )
 
@@ -353,7 +389,7 @@ def create_dispatch_order():
             "SELECT id FROM dispatch_orders WHERE order_number = :order_number",
             {"order_number": order_number}
         )
-        dispatch_order_id = order_id_df.iloc[0]["id"]
+        dispatch_order_id = int(order_id_df.iloc[0]["id"])
 
         # dispatch_order_itemsテーブルに明細を追加
         for _, item in items_df.iterrows():
@@ -368,17 +404,17 @@ def create_dispatch_order():
                 )
                 """,
                 {
-                    "dispatch_order_id": dispatch_order_id,
-                    "consumable_id": item["consumable_id"],
-                    "code": item["code"],
-                    "name": item["name"],
-                    "quantity": item["quantity"],
-                    "unit": item["unit"],
-                    "unit_price": item["unit_price"],
-                    "total_amount": item["total_amount"],
-                    "deadline": item["deadline"],
-                    "note": item["note"],
-                    "original_order_id": item["id"]
+                    "dispatch_order_id": int(dispatch_order_id),
+                    "consumable_id": int(item["consumable_id"]) if pd.notna(item["consumable_id"]) else None,
+                    "code": str(item["code"]) if pd.notna(item["code"]) else None,
+                    "name": str(item["name"]) if pd.notna(item["name"]) else None,
+                    "quantity": int(item["quantity"]) if pd.notna(item["quantity"]) else 0,
+                    "unit": str(item["unit"]) if pd.notna(item["unit"]) else None,
+                    "unit_price": float(item["unit_price"]) if pd.notna(item["unit_price"]) else 0.0,
+                    "total_amount": float(item["total_amount"]) if pd.notna(item["total_amount"]) else 0.0,
+                    "deadline": str(item["deadline"]) if pd.notna(item["deadline"]) else None,
+                    "note": str(item["note"]) if pd.notna(item["note"]) else None,
+                    "original_order_id": int(item["id"]) if pd.notna(item["id"]) else None
                 }
             )
 
@@ -392,8 +428,9 @@ def create_dispatch_order():
         return jsonify({
             "success": True,
             "message": "注文書を作成しました",
-            "order_number": order_number,
-            "dispatch_order_id": dispatch_order_id
+            "order_number": str(order_number),
+            "dispatch_order_id": int(dispatch_order_id),
+            "pdf_generated": bool(pdf_path is not None)
         })
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
@@ -428,11 +465,15 @@ def get_dispatch_orders():
         """
         df = db.execute_query(query)
 
-        # Timestamp列を文字列に変換
-        if "created_at" in df.columns:
-            df["created_at"] = df["created_at"].dt.strftime("%Y-%m-%d %H:%M:%S")
-        if "sent_at" in df.columns:
-            df["sent_at"] = df["sent_at"].dt.strftime("%Y-%m-%d %H:%M:%S")
+        # Timestamp列を文字列に変換（NULL値を考慮）
+        if "created_at" in df.columns and not df.empty:
+            df["created_at"] = df["created_at"].apply(
+                lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(x) else None
+            )
+        if "sent_at" in df.columns and not df.empty:
+            df["sent_at"] = df["sent_at"].apply(
+                lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(x) else None
+            )
 
         # NaTをNoneに変換
         df = df.where(df.notna(), None)
@@ -463,11 +504,15 @@ def get_dispatch_order_detail(order_id: int):
         if order_df.empty:
             return jsonify({"success": False, "error": "注文書が見つかりません"}), 404
 
-        # Timestamp列を文字列に変換
+        # Timestamp列を文字列に変換（NULL値を考慮）
         if "created_at" in order_df.columns:
-            order_df["created_at"] = order_df["created_at"].dt.strftime("%Y-%m-%d %H:%M:%S")
+            order_df["created_at"] = order_df["created_at"].apply(
+                lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(x) else None
+            )
         if "sent_at" in order_df.columns:
-            order_df["sent_at"] = order_df["sent_at"].dt.strftime("%Y-%m-%d %H:%M:%S")
+            order_df["sent_at"] = order_df["sent_at"].apply(
+                lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(x) else None
+            )
 
         order_df = order_df.where(order_df.notna(), None)
         order_data = order_df.iloc[0].to_dict()
@@ -490,6 +535,113 @@ def get_dispatch_order_detail(order_id: int):
 
         return jsonify({"success": True, "data": order_data})
     except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+def _get_or_generate_pdf(order_id: int):
+    """PDFパスを取得または生成（内部共通関数）"""
+    db = get_db_manager()
+
+    # 注文書情報を取得（pdf_pathも含む）
+    order_df = db.execute_query(
+        """
+        SELECT
+            do.order_number, do.supplier_id, do.supplier_name, do.created_by, do.created_at, do.note, do.pdf_path,
+            s.contact_person
+        FROM dispatch_orders do
+        LEFT JOIN suppliers s ON do.supplier_id = s.id
+        WHERE do.id = :id
+        """,
+        {"id": order_id}
+    )
+
+    if order_df.empty:
+        raise ValueError("注文書が見つかりません")
+
+    order_data = order_df.iloc[0].to_dict()
+    pdf_path = order_data.get('pdf_path')
+
+    # PDFが既に存在し、ファイルが実際に存在する場合はそれを使用
+    if pdf_path and os.path.exists(pdf_path):
+        print(f"既存のPDFを使用: {pdf_path}")
+        return pdf_path, order_data['order_number']
+
+    # PDFが存在しない場合は再生成
+    print(f"PDFを再生成します（order_id: {order_id}）")
+
+    # 注文書明細を取得
+    items_df = db.execute_query(
+        """
+        SELECT
+            code, name, quantity, unit, unit_price, total_amount, deadline, note
+        FROM dispatch_order_items
+        WHERE dispatch_order_id = :dispatch_order_id
+        ORDER BY id
+        """,
+        {"dispatch_order_id": order_id}
+    )
+
+    if items_df.empty:
+        raise ValueError("注文書明細が見つかりません")
+
+    # PDFを再生成（contact_personをPython標準型に変換）
+    order_data_for_pdf = {
+        "order_number": str(order_data.get('order_number', '')),
+        "supplier_name": str(order_data.get('supplier_name', '')),
+        "contact_person": str(order_data.get('contact_person', '')) if pd.notna(order_data.get('contact_person')) else "",
+        "created_by": str(order_data.get('created_by', '')),
+        "created_at": order_data.get('created_at'),
+        "note": str(order_data.get('note', '')) if order_data.get('note') else ""
+    }
+    items = items_df.to_dict(orient="records")
+    pdf_path = generate_purchase_order_pdf(order_data_for_pdf, items)
+
+    # 再生成したPDFパスをデータベースに保存
+    db.execute_update(
+        "UPDATE dispatch_orders SET pdf_path = :pdf_path WHERE id = :id",
+        {"pdf_path": pdf_path, "id": order_id}
+    )
+
+    return pdf_path, order_data['order_number']
+
+
+@dispatch_bp.route("/api/dispatch/orders/<int:order_id>/pdf", methods=["GET"])
+def view_dispatch_order_pdf(order_id: int):
+    """注文書PDFをブラウザで表示"""
+    try:
+        pdf_path, order_number = _get_or_generate_pdf(order_id)
+
+        # PDFファイルをブラウザで表示（as_attachment=False）
+        return send_file(
+            pdf_path,
+            mimetype='application/pdf',
+            as_attachment=False,
+            download_name=f"{order_number}.pdf"
+        )
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
+    except Exception as exc:
+        print(f"PDF表示エラー: {exc}")
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@dispatch_bp.route("/api/dispatch/orders/<int:order_id>/pdf/download", methods=["GET"])
+def download_dispatch_order_pdf(order_id: int):
+    """注文書PDFをダウンロード"""
+    try:
+        pdf_path, order_number = _get_or_generate_pdf(order_id)
+
+        # PDFファイルをダウンロード（as_attachment=True）
+        return send_file(
+            pdf_path,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f"{order_number}.pdf"
+        )
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 404
+    except Exception as exc:
+        print(f"PDFダウンロードエラー: {exc}")
         return jsonify({"success": False, "error": str(exc)}), 500
 
 
