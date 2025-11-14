@@ -1094,14 +1094,222 @@ body {
     border: 2px solid #e0e0e0;
     border-radius: 8px;
     padding: 16px;
+    padding-left: 24px;
     cursor: pointer;
     transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
 }
+
+.dispatch-order-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 6px;
+    border-radius: 8px 0 0 8px;
+    background: #009688;
+    opacity: 0.3;
+}
+
+.dispatch-order-card::after {
+    content: attr(data-order-number);
+    position: absolute;
+    font-size: clamp(32px, 5vw, 48px);
+    font-weight: 800;
+    color: rgba(0, 0, 0, 0.05);
+    right: 16px;
+    top: 12px;
+}
+
+
+.dispatch-order-card.order-color-1 {
+    border-color: #1976d2;
+    background: linear-gradient(to right, rgba(25, 118, 210, 0.05), white);
+}
+
+.dispatch-order-card.order-color-1::before {
+    background: linear-gradient(180deg, rgba(25, 118, 210, 0.8), rgba(25, 118, 210, 0.5));
+}
+
+.dispatch-order-card.order-color-1::after {
+    color: rgba(25, 118, 210, 0.12);
+}
+
+.dispatch-order-card.order-color-2 {
+    border-color: #fb8c00;
+    background: linear-gradient(to right, rgba(251, 140, 0, 0.05), white);
+}
+
+.dispatch-order-card.order-color-2::before {
+    background: linear-gradient(180deg, rgba(251, 140, 0, 0.8), rgba(251, 140, 0, 0.5));
+}
+
+.dispatch-order-card.order-color-2::after {
+    color: rgba(251, 140, 0, 0.12);
+}
+
+.dispatch-order-card.order-color-3 {
+    border-color: #4CAF50;
+    background: linear-gradient(to right, rgba(76, 175, 80, 0.05), white);
+}
+
+.dispatch-order-card.order-color-3::before {
+    background: linear-gradient(180deg, rgba(76, 175, 80, 0.8), rgba(76, 175, 80, 0.5));
+}
+
+.dispatch-order-card.order-color-3::after {
+    color: rgba(76, 175, 80, 0.12);
+}
+
+.dispatch-order-card.order-color-4 {
+    border-color: #673AB7;
+    background: linear-gradient(to right, rgba(103, 58, 183, 0.05), white);
+}
+
+.dispatch-order-card.order-color-4::before {
+    background: linear-gradient(180deg, rgba(103, 58, 183, 0.8), rgba(103, 58, 183, 0.5));
+}
+
+.dispatch-order-card.order-color-4::after {
+    color: rgba(103, 58, 183, 0.12);
+}
+
+
+.dispatch-order-card.order-color-1 .order-seq,
+.dispatch-order-card.order-color-1 .item-dot {
+    color: #1976d2;
+    background: #1976d2;
+}
+
+.dispatch-order-card.order-color-2 .order-seq,
+.dispatch-order-card.order-color-2 .item-dot {
+    color: #fb8c00;
+    background: #fb8c00;
+}
+
+.dispatch-order-card.order-color-3 .order-seq,
+.dispatch-order-card.order-color-3 .item-dot {
+    color: #4CAF50;
+    background: #4CAF50;
+}
+
+.dispatch-order-card.order-color-4 .order-seq,
+.dispatch-order-card.order-color-4 .item-dot {
+    color: #673AB7;
+    background: #673AB7;
+}
+
 
 .dispatch-order-card:hover {
     border-color: #009688;
     box-shadow: 0 4px 12px rgba(0, 150, 136, 0.2);
     transform: translateY(-2px);
+}
+
+.dispatch-order-card .order-card-top {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.dispatch-order-card .order-seq {
+    font-size: 18px;
+    font-weight: 700;
+    color: #009688;
+    min-width: 36px;
+    text-align: center;
+}
+
+.dispatch-order-card .order-card-title {
+    flex: 1;
+}
+
+.dispatch-order-card .order-number {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.dispatch-order-card .order-dates {
+    display: flex;
+    gap: 12px;
+    font-size: 12px;
+    color: #666;
+}
+
+.order-date-pending {
+    color: #ef6c00;
+    font-weight: 600;
+}
+
+.order-card-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.order-meta-item {
+    background: #f9f9f9;
+    border-radius: 6px;
+    padding: 8px;
+}
+
+.order-meta-item .meta-label {
+    display: block;
+    font-size: 11px;
+    color: #777;
+    margin-bottom: 4px;
+}
+
+.order-meta-item .meta-value {
+    font-weight: 600;
+    font-size: 13px;
+    color: #333;
+}
+
+.order-items-preview {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px dashed #e0e0e0;
+}
+
+.order-items-preview.empty {
+    color: #888;
+    font-size: 13px;
+    padding: 8px 0;
+}
+
+.item-preview {
+    display: flex;
+    gap: 8px;
+    padding: 6px 0;
+}
+
+.item-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #009688;
+    margin-top: 8px;
+}
+
+.item-text {
+    flex: 1;
+}
+
+.item-name {
+    font-weight: 600;
+    font-size: 13px;
+    display: block;
+}
+
+.item-meta {
+    font-size: 12px;
+    color: #666;
 }
 
 .order-card-header {
