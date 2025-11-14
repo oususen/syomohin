@@ -729,6 +729,49 @@ def send_dispatch_order(order_id: int):
         # PDFを取得または生成
         pdf_path, _ = _get_or_generate_pdf(order_id)
 
+        # 現在のユーザーのメール設定を取得
+        user_id = session.get("user_id")
+        username = session.get("username")
+
+        user_email_config = None
+        if user_id or username:
+            # ユーザー情報を取得
+            if user_id:
+                user_df = db.execute_query(
+                    "SELECT email, smtp_host, smtp_port, smtp_user, smtp_password, full_name FROM users WHERE id = :id",
+                    {"id": user_id}
+                )
+            else:
+                user_df = db.execute_query(
+                    "SELECT email, smtp_host, smtp_port, smtp_user, smtp_password, full_name FROM users WHERE username = :username",
+                    {"username": username}
+                )
+
+            if not user_df.empty:
+                user_data = user_df.iloc[0]
+                # メール設定が全て設定されている場合のみ使用
+                if all([
+                    pd.notna(user_data.get('smtp_host')),
+                    pd.notna(user_data.get('smtp_port')),
+                    pd.notna(user_data.get('smtp_user')),
+                    pd.notna(user_data.get('smtp_password'))
+                ]):
+                    user_email_config = {
+                        'smtp_host': str(user_data['smtp_host']),
+                        'smtp_port': int(user_data['smtp_port']),
+                        'smtp_user': str(user_data['smtp_user']),
+                        'smtp_password': str(user_data['smtp_password']),
+                        'from_email': str(user_data['email']) if pd.notna(user_data.get('email')) else str(user_data['smtp_user']),
+                        'from_name': str(user_data['full_name']) if pd.notna(user_data.get('full_name')) else 'ダイソウ工業株式会社'
+                    }
+
+        # メール設定が未設定の場合はエラー
+        if not user_email_config:
+            return jsonify({
+                "success": False,
+                "error": "メール送信設定が未設定です。ユーザー管理画面でメール設定を行ってください。"
+            }), 400
+
         # メール送信
         try:
             send_purchase_order_email(
@@ -736,7 +779,8 @@ def send_dispatch_order(order_id: int):
                 order_number=order_number,
                 supplier_name=supplier_name,
                 pdf_path=pdf_path,
-                contact_person=contact_person
+                contact_person=contact_person,
+                user_email_config=user_email_config
             )
         except Exception as email_error:
             return jsonify({
