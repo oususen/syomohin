@@ -4,6 +4,11 @@
 from __future__ import annotations
 
 from pathlib import Path
+import os
+
+# 環境変数の読み込み
+from dotenv import load_dotenv
+load_dotenv()  # .envファイルから環境変数を読み込む
 
 from flask import Flask, render_template, send_from_directory, make_response, jsonify, session, redirect, url_for
 from flask_cors import CORS

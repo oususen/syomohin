@@ -10,6 +10,7 @@ import os
 
 from database_manager import get_db_manager
 from pdf_generator import generate_purchase_order_pdf
+from email_sender import send_purchase_order_email
 
 dispatch_bp = Blueprint("dispatch", __name__)
 
@@ -704,17 +705,44 @@ def send_dispatch_order(order_id: int):
 
         db = get_db_manager()
 
-        # 注文書の存在確認
+        # 注文書情報を取得
         order_df = db.execute_query(
-            "SELECT id, status FROM dispatch_orders WHERE id = :id",
+            """
+            SELECT
+                do.id, do.order_number, do.supplier_name, do.status,
+                s.contact_person
+            FROM dispatch_orders do
+            LEFT JOIN suppliers s ON do.supplier_id = s.id
+            WHERE do.id = :id
+            """,
             {"id": order_id}
         )
 
         if order_df.empty:
             return jsonify({"success": False, "error": "注文書が見つかりません"}), 404
 
-        # TODO: ここで実際のPDF生成とメール送信処理を実装
-        # 現在はダミー実装
+        order_data = order_df.iloc[0]
+        order_number = str(order_data['order_number'])
+        supplier_name = str(order_data['supplier_name'])
+        contact_person = str(order_data['contact_person']) if pd.notna(order_data['contact_person']) else ''
+
+        # PDFを取得または生成
+        pdf_path, _ = _get_or_generate_pdf(order_id)
+
+        # メール送信
+        try:
+            send_purchase_order_email(
+                to_email=email,
+                order_number=order_number,
+                supplier_name=supplier_name,
+                pdf_path=pdf_path,
+                contact_person=contact_person
+            )
+        except Exception as email_error:
+            return jsonify({
+                "success": False,
+                "error": f"メール送信に失敗しました: {str(email_error)}"
+            }), 500
 
         # ステータスを「送信済」に更新
         db.execute_update(
