@@ -1085,20 +1085,44 @@ body {
 .dispatch-orders-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-    gap: 16px;
-    margin-top: 16px;
+    gap: 24px;
+    margin-top: 20px;
 }
 
 .dispatch-order-card {
     background: white;
-    border: 2px solid #e0e0e0;
+    border: 3px solid #e0e0e0;
     border-radius: 8px;
-    padding: 16px;
-    padding-left: 24px;
+    padding: 0;
     cursor: pointer;
     transition: all 0.3s;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.order-card-header-bar {
+    padding: 12px 16px;
+    background: #f5f5f5;
+    border-bottom: 3px solid #ddd;
+}
+
+.order-card-number-badge {
+    font-size: 18px;
+    font-weight: 700;
+    color: #333;
+    display: inline-block;
+}
+
+.order-card-separator {
+    height: 3px;
+    background: #ddd;
+    margin-top: 8px;
+}
+
+.order-card-body {
+    padding: 16px;
+    padding-left: 24px;
 }
 
 .dispatch-order-card::before {
@@ -1126,54 +1150,70 @@ body {
 
 .dispatch-order-card.order-color-1 {
     border-color: #1976d2;
-    background: linear-gradient(to right, rgba(25, 118, 210, 0.05), white);
+}
+
+.dispatch-order-card.order-color-1 .order-card-header-bar {
+    background: #e3f2fd;
+    border-bottom-color: #1976d2;
+}
+
+.dispatch-order-card.order-color-1 .order-card-number-badge {
+    color: #1976d2;
 }
 
 .dispatch-order-card.order-color-1::before {
-    background: linear-gradient(180deg, rgba(25, 118, 210, 0.8), rgba(25, 118, 210, 0.5));
-}
-
-.dispatch-order-card.order-color-1::after {
-    color: rgba(25, 118, 210, 0.12);
+    background: #1976d2;
 }
 
 .dispatch-order-card.order-color-2 {
     border-color: #fb8c00;
-    background: linear-gradient(to right, rgba(251, 140, 0, 0.05), white);
+}
+
+.dispatch-order-card.order-color-2 .order-card-header-bar {
+    background: #fff3e0;
+    border-bottom-color: #fb8c00;
+}
+
+.dispatch-order-card.order-color-2 .order-card-number-badge {
+    color: #fb8c00;
 }
 
 .dispatch-order-card.order-color-2::before {
-    background: linear-gradient(180deg, rgba(251, 140, 0, 0.8), rgba(251, 140, 0, 0.5));
-}
-
-.dispatch-order-card.order-color-2::after {
-    color: rgba(251, 140, 0, 0.12);
+    background: #fb8c00;
 }
 
 .dispatch-order-card.order-color-3 {
     border-color: #4CAF50;
-    background: linear-gradient(to right, rgba(76, 175, 80, 0.05), white);
+}
+
+.dispatch-order-card.order-color-3 .order-card-header-bar {
+    background: #e8f5e9;
+    border-bottom-color: #4CAF50;
+}
+
+.dispatch-order-card.order-color-3 .order-card-number-badge {
+    color: #4CAF50;
 }
 
 .dispatch-order-card.order-color-3::before {
-    background: linear-gradient(180deg, rgba(76, 175, 80, 0.8), rgba(76, 175, 80, 0.5));
-}
-
-.dispatch-order-card.order-color-3::after {
-    color: rgba(76, 175, 80, 0.12);
+    background: #4CAF50;
 }
 
 .dispatch-order-card.order-color-4 {
     border-color: #673AB7;
-    background: linear-gradient(to right, rgba(103, 58, 183, 0.05), white);
+}
+
+.dispatch-order-card.order-color-4 .order-card-header-bar {
+    background: #f3e5f5;
+    border-bottom-color: #673AB7;
+}
+
+.dispatch-order-card.order-color-4 .order-card-number-badge {
+    color: #673AB7;
 }
 
 .dispatch-order-card.order-color-4::before {
-    background: linear-gradient(180deg, rgba(103, 58, 183, 0.8), rgba(103, 58, 183, 0.5));
-}
-
-.dispatch-order-card.order-color-4::after {
-    color: rgba(103, 58, 183, 0.12);
+    background: #673AB7;
 }
 
 
