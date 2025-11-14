@@ -570,6 +570,9 @@ async function loadDispatchOrders() {
                             📧
                         </button>
                     ` : ''}
+                    <button class="btn-small btn-danger" onclick="deleteDispatchOrder(${order.id}, '${order.order_number}')" title="削除">
+                        🗑️
+                    </button>
                 </td>
             </tr>
         `).join('');
@@ -763,3 +766,32 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+// 注文書削除機能
+async function deleteDispatchOrder(orderId, orderNumber) {
+    if (!confirm(`注文書 ${orderNumber} を削除してもよろしいですか？\nこの操作は取り消せません。`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/dispatch/orders/${orderId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSuccess(data.message);
+            loadDispatchOrders(); // リストを更新
+        } else {
+            showError(data.error || '削除に失敗しました');
+        }
+    } catch (error) {
+        console.error('Error deleting order:', error);
+        showError('削除に失敗しました');
+    }
+}
+
+// グローバルに公開
+window.deleteDispatchOrder = deleteDispatchOrder;

@@ -843,3 +843,49 @@ def send_dispatch_order(order_id: int):
         })
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@dispatch_bp.route("/api/dispatch/orders/<int:order_id>", methods=["DELETE"])
+def delete_dispatch_order(order_id: int):
+    """注文書を削除"""
+    try:
+        db = get_db_manager()
+
+        # 注文書が存在するか確認
+        order_df = db.execute_query(
+            "SELECT id, order_number, pdf_path FROM dispatch_orders WHERE id = :id",
+            {"id": order_id}
+        )
+
+        if order_df.empty:
+            return jsonify({"success": False, "error": "注文書が見つかりません"}), 404
+
+        order_data = order_df.iloc[0]
+        pdf_path = order_data.get('pdf_path')
+
+        # PDFファイルを削除
+        if pdf_path and os.path.exists(pdf_path):
+            try:
+                os.remove(pdf_path)
+                print(f"PDFファイルを削除しました: {pdf_path}")
+            except Exception as e:
+                print(f"PDFファイルの削除に失敗: {e}")
+
+        # 注文書明細を削除
+        db.execute_update(
+            "DELETE FROM dispatch_order_items WHERE dispatch_order_id = :order_id",
+            {"order_id": order_id}
+        )
+
+        # 注文書を削除
+        db.execute_update(
+            "DELETE FROM dispatch_orders WHERE id = :order_id",
+            {"order_id": order_id}
+        )
+
+        return jsonify({
+            "success": True,
+            "message": "注文書を削除しました"
+        })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
