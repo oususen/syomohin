@@ -142,11 +142,8 @@ def get_filter_options():
         )
         order_status_list = ["すべて"] + order_status_df["order_status"].tolist()
 
-        # 欠品状態の選択肢
-        shortage_status_df = db.execute_query(
-            "SELECT DISTINCT shortage_status FROM consumables WHERE shortage_status IS NOT NULL ORDER BY shortage_status"
-        )
-        shortage_status_list = ["すべて"] + shortage_status_df["shortage_status"].tolist()
+        # 欠品状態の選択肢（固定リスト）
+        shortage_status_list = ["すべて", "在庫あり", "要注意", "欠品"]
 
         return jsonify(
             {
