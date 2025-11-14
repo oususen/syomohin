@@ -690,85 +690,63 @@ async function loadDispatchOrdersForInbound() {
             return;
         }
 
-        // 注文書リストを表示
-        let html = '<div class="dispatch-orders-list">';
-        orders.forEach((order, index) => {
+        // 注文書リストを表示（在庫一覧と同じ構造）
+        container.innerHTML = orders.map((order, index) => {
             const createdAt = order.created_at ? order.created_at.split(' ')[0] : '-';
-            const sentAt = order.sent_at ? order.sent_at.split(' ')[0] : '';
-            const status = order.status || '送信待ち';
-            const sequenceLabel = String(index + 1).padStart(2, '0');
-            const colorClasses = ['order-color-1', 'order-color-2', 'order-color-3', 'order-color-4'];
-            const colorClass = colorClasses[index % colorClasses.length];
+            const sentAt = order.sent_at ? order.sent_at.split(' ')[0] : '-';
+            const status = order.status || '未送信';
             const items = order.items || [];
-            const totalItems = order.total_items != null ? order.total_items : items.length;
-            const totalAmount = order.total_amount != null ? order.total_amount : 0;
 
-            let itemsHtml;
+            // 商品リストHTML
+            let itemsListHtml = '';
             if (items.length > 0) {
-                itemsHtml = `
-                    <div class="order-items-preview">
-                        ${items.map(item => `
-                            <div class="item-preview">
-                                <span class="item-dot"></span>
-                                <div class="item-text">
-                                    <span class="item-name">${item.name || '-'}</span>
-                                    <span class="item-meta">コード: ${item.code || '-'} / 数量: ${item.quantity || 0}${item.unit || '個'}</span>
-                                </div>
-                            </div>
-                        `).join('')}
+                itemsListHtml = items.map(item => `
+                    <div class="order-item-row">
+                        <span class="item-name-text">${item.name || '-'}</span>
+                        <span class="item-qty-text">${item.quantity || 0}${item.unit || '個'}</span>
                     </div>
-                `;
+                `).join('');
             } else {
-                itemsHtml = `
-                    <div class="order-items-preview empty">
-                        商品情報が登録されていません
-                    </div>
-                `;
+                itemsListHtml = '<div class="order-item-row">商品情報なし</div>';
             }
 
-            html += `
-                <div class="dispatch-order-card ${colorClass}" data-order-number="${sequenceLabel}" onclick="window.selectDispatchOrderForInbound(${order.id})">
-                    <div class="order-card-header-bar">
-                        <div class="order-card-number-badge">注文書 ${sequenceLabel}</div>
-                        <div class="order-card-separator"></div>
+            return `
+                <div class="dispatch-order-card" onclick="window.selectDispatchOrderForInbound(${order.id})">
+                    <div class="order-header">
+                        <div class="order-number-large">注文書 ${String(index + 1).padStart(2, '0')}</div>
+                        <div class="order-status-badge status-${status}">${status}</div>
                     </div>
-                    <div class="order-card-body">
-                        <div class="order-card-top">
-                            <span class="order-seq">${sequenceLabel}</span>
-                            <div class="order-card-title">
-                                <div class="order-number">${order.order_number}</div>
-                                <div class="order-dates">
-                                    <span>作成日: ${createdAt}</span>
-                                    ${sentAt ? `<span>送信日: ${sentAt}</span>` : `<span class="order-date-pending">送信日: 未送信</span>`}
-                                </div>
-                            </div>
-                            <span class="status-badge status-${status}">${status}</span>
+                    <div class="order-info-section">
+                        <div class="order-info-row">
+                            <span class="info-label">注文書番号:</span>
+                            <span class="info-value">${order.order_number}</span>
                         </div>
-                        <div class="order-card-meta">
-                            <div class="order-meta-item">
-                                <span class="meta-label">購入先</span>
-                                <span class="meta-value">${order.supplier_name || '-'}</span>
-                            </div>
-                            <div class="order-meta-item">
-                                <span class="meta-label">合計金額</span>
-                                <span class="meta-value">${totalAmount.toLocaleString()}</span>
-                            </div>
-                            <div class="order-meta-item">
-                                <span class="meta-label">品目数</span>
-                                <span class="meta-value">${totalItems} 件</span>
-                            </div>
-                            <div class="order-meta-item">
-                                <span class="meta-label">状態</span>
-                                <span class="meta-value">${status}</span>
-                            </div>
+                        <div class="order-info-row">
+                            <span class="info-label">購入先:</span>
+                            <span class="info-value">${order.supplier_name || '-'}</span>
                         </div>
-                        ${itemsHtml}
+                        <div class="order-info-row">
+                            <span class="info-label">作成日:</span>
+                            <span class="info-value">${createdAt}</span>
+                        </div>
+                        <div class="order-info-row">
+                            <span class="info-label">送信日:</span>
+                            <span class="info-value">${sentAt}</span>
+                        </div>
+                        <div class="order-info-row">
+                            <span class="info-label">合計金額:</span>
+                            <span class="info-value">¥${(order.total_amount || 0).toLocaleString()}</span>
+                        </div>
+                    </div>
+                    <div class="order-items-section">
+                        <div class="section-title">📦 商品一覧 (${items.length}件)</div>
+                        <div class="items-list-wrapper">
+                            ${itemsListHtml}
+                        </div>
                     </div>
                 </div>
             `;
-        });
-        html += '</div>';
-        container.innerHTML = html;
+        }).join('');
 
     } catch (error) {
         console.error('注文書一覧の取得に失敗:', error);

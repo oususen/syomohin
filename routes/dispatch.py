@@ -500,6 +500,7 @@ def get_dispatch_orders():
                 s.email as supplier_email
             FROM dispatch_orders do
             LEFT JOIN suppliers s ON do.supplier_id = s.id
+            WHERE do.status != '入庫済み'
             ORDER BY do.created_at DESC
         """
         df = db.execute_query(query)

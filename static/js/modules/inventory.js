@@ -140,6 +140,25 @@ function renderInventory(items) {
             `;
         }
 
+        // 入庫詳細HTML（直近2件のみ）
+        const inboundDetails = item['入庫詳細'] || [];
+        let inboundDetailsHtml = '';
+        if (orderStatus === '入庫済み' && inboundDetails.length > 0) {
+            const recentInbounds = inboundDetails.slice(0, 2); // 直近2件のみ
+            inboundDetailsHtml = `
+                <div class="order-details-section inbound-details-section">
+                    <div class="order-details-title">📥 入庫詳細（直近2件）</div>
+                    ${recentInbounds.map(detail => `
+                        <div class="order-detail-item">
+                            <span>入庫日: ${detail['入庫日'] || '-'}</span>
+                            <span>数量: <strong>${detail['数量'] || 0}</strong> ${unit}</span>
+                            <span>入庫者: ${detail['入庫者'] || '-'}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
         return `
             <div class="inventory-card">
                 <div class="card-main">
@@ -173,6 +192,7 @@ function renderInventory(items) {
                         </div>
                         ${pendingOrdersHtml}
                         ${completedOrdersHtml}
+                        ${inboundDetailsHtml}
                     </div>
                     <div class="card-actions">
                         <button

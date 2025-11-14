@@ -173,10 +173,47 @@ def get_inventory():
                 print(f"Error fetching completed orders: {e}")
                 # エラーが発生しても、空の配列を設定
                 df['発注済み注文'] = [[] for _ in range(len(df))]
+
+            # 入庫済み注文の入庫詳細を取得
+            try:
+                inbound_details_query = f"""
+                    SELECT
+                        ih.consumable_id,
+                        ih.inbound_date AS 入庫日,
+                        ih.quantity AS 数量,
+                        ih.employee_name AS 入庫者
+                    FROM inbound_history ih
+                    WHERE ih.consumable_id IN ({placeholders})
+                    AND ih.inbound_type = '注文書'
+                    ORDER BY ih.inbound_date DESC
+                """
+
+                inbound_details_df = db.execute_query(inbound_details_query, order_params)
+
+                # 商品ごとに入庫詳細をグループ化
+                inbound_details_dict = {}
+                if not inbound_details_df.empty:
+                    for _, detail in inbound_details_df.iterrows():
+                        consumable_id = int(detail['consumable_id'])
+                        if consumable_id not in inbound_details_dict:
+                            inbound_details_dict[consumable_id] = []
+                        inbound_details_dict[consumable_id].append({
+                            '入庫日': detail['入庫日'].strftime('%Y-%m-%d') if pd.notna(detail['入庫日']) else None,
+                            '数量': int(detail['数量']) if pd.notna(detail['数量']) else 0,
+                            '入庫者': str(detail['入庫者']) if pd.notna(detail['入庫者']) else None
+                        })
+
+                # データフレームに入庫詳細を追加
+                df['入庫詳細'] = df['id'].apply(lambda x: inbound_details_dict.get(int(x), []))
+            except Exception as e:
+                print(f"Error fetching inbound details: {e}")
+                # エラーが発生しても、空の配列を設定
+                df['入庫詳細'] = [[] for _ in range(len(df))]
         else:
             # データフレームが空の場合も、カラムを追加
             df['依頼中注文'] = []
             df['発注済み注文'] = []
+            df['入庫詳細'] = []
 
         # JSON形式で返す
         return jsonify(
@@ -463,12 +500,12 @@ def create_dispatch_inbound():
                     }
                 )
 
-                # 在庫数を増やす
+                # 在庫数を増やし、注文状態を「入庫済み」に更新
                 new_stock = current_stock + quantity
                 new_status = calculate_shortage_status(new_stock, safety_stock)
                 db.execute_update(
-                    "UPDATE consumables SET stock_quantity = :stock, shortage_status = :status WHERE id = :id",
-                    {"stock": new_stock, "status": new_status, "id": consumable_id}
+                    "UPDATE consumables SET stock_quantity = :stock, shortage_status = :status, order_status = :order_status WHERE id = :id",
+                    {"stock": new_stock, "status": new_status, "order_status": "入庫済み", "id": consumable_id}
                 )
 
                 inbound_count += 1
@@ -484,6 +521,28 @@ def create_dispatch_inbound():
                 "error": "すべての商品の入庫に失敗しました",
                 "errors": errors
             }), 500
+
+        # 一括入庫が成功したら注文書のステータスを「入庫済み」に更新
+        db.execute_update(
+            "UPDATE dispatch_orders SET status = :status WHERE id = :id",
+            {"status": "入庫済み", "id": dispatch_order_id}
+        )
+
+        # 対応するordersテーブルのレコードも「入庫済み」に更新
+        db.execute_update(
+            """
+            UPDATE orders
+            SET status = '入庫済み'
+            WHERE consumable_id IN (
+                SELECT DISTINCT consumable_id
+                FROM dispatch_order_items
+                WHERE dispatch_order_id = :order_id
+                AND consumable_id IS NOT NULL
+            )
+            AND status = '発注済'
+            """,
+            {"order_id": dispatch_order_id}
+        )
 
         message = f"{inbound_count}件の商品を入庫しました"
         if errors:
