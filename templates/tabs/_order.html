@@ -1,0 +1,75 @@
+    <div id="orderPage" class="page-content">
+        <div class="page-header">
+            <h2>注文依頼</h2>
+            <p>不足している商品の注文を依頼します</p>
+        </div>
+
+        <div class="form-container">
+            <div class="filter-group">
+                <label for="orderQrCode">QRコード検索</label>
+                <input type="text" id="orderQrCode" class="input-field" placeholder="QRコードを読み取る">
+                <button id="orderScanBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
+                    QR QRスキャン
+                </button>
+            </div>
+
+            <div id="orderItemInfo" class="item-info" style="display: none;">
+                <h3>商品情報</h3>
+                <div id="orderItemDetails"></div>
+
+                <div class="filter-group">
+                    <label for="orderQuantity">注文数量</label>
+                    <input type="number" id="orderQuantity" class="input-field" min="1" placeholder="注文数量を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="orderDeadline">納期</label>
+                    <input type="date" id="orderDeadline" class="input-field">
+                </div>
+
+                <div class="filter-group">
+                <div class="filter-group">
+                    <label for="orderEmployeeCode">発注依頼者コード</label>
+                    <input type="text" id="orderEmployeeCode" class="input-field" placeholder="社員コードを入力">
+                    <small class="import-hint">コード入力で依頼者名が自動入力されます</small>
+                </div>
+
+                    <label for="orderRequester">発注依頼者</label>
+                    <input type="text" id="orderRequester" class="input-field" placeholder="依頼者名を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="orderNote">備考</label>
+                    <textarea id="orderNote" class="input-field" rows="3" placeholder="備考（任意）"></textarea>
+                </div>
+
+                <button type="button" id="submitOrder" class="btn btn-primary" style="width: 100%;">
+                     注文依頼を送信
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="orderListPage" class="page-content">
+        <div class="page-header">
+            <h2>一覧 発注依頼状態リスト</h2>
+            <p>発注依頼の状況を確認します</p>
+        </div>
+
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" id="showManualOrders"> 人からの依頼</button>
+            <button class="btn btn-secondary" id="showAutoOrders"> 自動依頼分</button>
+        </div>
+
+        <!-- 人からの依頼リスト -->
+        <div id="manualOrdersList" class="list-container">
+            <h3>人からの依頼</h3>
+            <div id="manualOrdersContent"></div>
+        </div>
+
+        <!-- 自動依頼分リスト -->
+        <div id="autoOrdersList" class="list-container" style="display: none;">
+            <h3>自動依頼分（発注済み）</h3>
+            <div id="autoOrdersContent"></div>
+        </div>
+    </div>

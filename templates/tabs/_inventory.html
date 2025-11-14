@@ -1,0 +1,65 @@
+<div id="inventoryPage" class="page-content active">
+    <!-- フィルターエリア -->
+    <div class="filter-container">
+        <h2>フィルター</h2>
+
+        <div class="filter-group">
+            <label for="qrCodeInput">QRコード検索</label>
+            <input
+                type="text"
+                id="qrCodeInput"
+                placeholder="QRコードを読み取る / 手入力"
+                class="input-field"
+            >
+        </div>
+
+        <div class="button-group">
+            <button id="clearQrBtn" class="btn btn-secondary">
+                削除 QRコードをクリア
+            </button>
+            <button id="scanQrBtn" class="btn btn-primary">
+                QR QRスキャン
+            </button>
+
+
+        </div>
+
+        <div class="filter-group">
+            <label for="searchInput">品名検索</label>
+            <input
+                type="text"
+                id="searchInput"
+                placeholder="品名を検索できます"
+                class="input-field"
+            >
+        </div>
+
+        <div class="filter-row">
+            <div class="filter-group">
+                <label for="orderStatus">注文状態</label>
+                <select id="orderStatus" class="input-field">
+                    <option value="すべて">すべて</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="shortageStatus">欠品状態</label>
+                <select id="shortageStatus" class="input-field">
+                    <option value="すべて">すべて</option>
+                    <option value="在庫あり">在庫あり</option>
+                    <option value="要注意">要注意</option>
+                    <option value="欠品">欠品</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- 表示件数 -->
+    <div class="count-info">
+        <p id="countInfo">表示件数: 0 / 0</p>
+    </div>
+
+    <!-- 在庫一覧 -->
+    <div id="inventoryList" class="inventory-list">
+        <p class="loading">読み込み中...</p>
+    </div>
+</div><!-- 在庫一覧ページ終了 -->

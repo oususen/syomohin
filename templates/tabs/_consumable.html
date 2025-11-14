@@ -1,0 +1,200 @@
+    <div id="registerPage" class="page-content">
+        <div class="page-header">
+            <h2>🧰 消耗品管理</h2>
+            <p>新規登録と個別編集をタブで切り替え、在庫マスタを整理できます。</p>
+        </div>
+
+        <div class="subtab-group" id="registerSubtabs">
+            <button class="subtab-btn active" data-detail-tab="create">🆕 新規登録</button>
+            <button class="subtab-btn" data-detail-tab="edit">🛠 個別編集</button>
+        </div>
+
+        <div id="registerFormSection" class="form-container detail-tab-content" data-detail-tab-content="create">
+            <h3 class="section-title">基本情報の入力</h3>
+                <div class="read-only-notice" id="registerCreateReadOnlyNotice" hidden>
+                    このアカウントは閲覧専用のため、新規登録はできません。
+                </div>
+
+            <div class="filter-group">
+                <label for="registerCode">コード *</label>
+                <input type="text" id="registerCode" class="input-field" placeholder="例: TIP-12-EG-1" required>
+            </div>
+            <div class="filter-group">
+                <label for="registerOrderCode">発注コード</label>
+                <input type="text" id="registerOrderCode" class="input-field" placeholder="任意で設定できます">
+            </div>
+            <div class="filter-group">
+                <label for="registerName">品名 *</label>
+                <input type="text" id="registerName" class="input-field" placeholder="品名を入力" required>
+            </div>
+            <div class="filter-group">
+                <label for="registerCategory">カテゴリ</label>
+                <input type="text" id="registerCategory" class="input-field" placeholder="例: 事務用品">
+            </div>
+            <div class="filter-group">
+                <label for="registerUnit">単位</label>
+                <input type="text" id="registerUnit" class="input-field" placeholder="個 / 箱など" value="個">
+            </div>
+            <div class="filter-group">
+                <label for="registerStockQty">在庫数</label>
+                <input type="number" id="registerStockQty" class="input-field" placeholder="0" value="0" min="0">
+            </div>
+            <div class="filter-group">
+                <label for="registerSafetyStock">安全在庫</label>
+                <input type="number" id="registerSafetyStock" class="input-field" placeholder="0" value="0" min="0">
+            </div>
+            <div class="filter-group">
+                <label for="registerUnitPrice">単価</label>
+                <input type="number" id="registerUnitPrice" class="input-field" placeholder="0" value="0" min="0">
+            </div>
+            <div class="filter-group">
+                <label for="registerOrderUnit">発注単位</label>
+                <input type="number" id="registerOrderUnit" class="input-field" placeholder="1" value="1" min="1">
+            </div>
+            <div class="filter-group">
+                <label for="registerSupplier">購入先</label>
+                <select id="registerSupplier" class="input-field">
+                    <option value="">-- 購入先を選択 --</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="registerStorageLocation">保管場所</label>
+                <input type="text" id="registerStorageLocation" class="input-field" placeholder="倉庫・棚番号など">
+            </div>
+            <div class="filter-group image-upload-group">
+                <label for="registerImage">商品画像</label>
+                <input type="file" id="registerImage" class="input-field file-input" accept="image/*" capture="environment">
+                <input type="hidden" id="registerImagePath">
+                <div class="image-preview" id="registerImagePreviewBox" hidden>
+                    <img src="" alt="商品画像プレビュー">
+                </div>
+                <div class="image-upload-actions">
+                    <button type="button" class="btn btn-secondary" id="registerImageClearBtn">画像をクリア</button>
+                    <button type="button" class="btn btn-outline" id="registerImageCameraBtn">📷 カメラで撮影</button>
+                </div>
+                <small class="import-hint">PNG/JPG/GIF 最大 5MB まで</small>
+            </div>
+            <div class="filter-group">
+                <label for="registerNote">備考</label>
+                <textarea id="registerNote" class="input-field" rows="3" placeholder="任意"></textarea>
+            </div>
+            <button id="registerSubmitBtn" class="btn btn-primary primary-action" type="button">
+                💾 新規登録する
+            </button>
+
+            <div class="import-section">
+                <h3>CSVインポート</h3>
+                <p class="import-note">テンプレートに沿って入力したファイルを読み込めます。</p>
+                <input type="file" id="csvFileInput" class="input-field file-input" accept=".csv">
+                <div class="import-actions">
+                    <button id="csvImportBtn" class="btn btn-outline" type="button">CSVを読み込む</button>
+                    <button id="csvTemplateDownloadBtn" class="btn btn-outline" type="button">テンプレートをダウンロード</button>
+                </div>
+                <small class="import-hint">必須列: コード / 品名。UTF-8 で保存してください。</small>
+            </div>
+        </div>
+
+        <div id="editFormSection" class="detail-tab-content" data-detail-tab-content="edit" hidden>
+            <div class="form-container">
+                <h3 class="section-title">ギャラリーから選択</h3>
+                <div class="filter-group">
+                    <label for="editSearchCode">コード / 品名で検索</label>
+                    <div class="input-with-button">
+                        <input type="text" id="editSearchCode" class="input-field" placeholder="例: TIP または 手袋">
+                        <button id="editLoadBtn" class="btn btn-secondary" type="button">ギャラリーを更新</button>
+                    </div>
+                    <small class="import-hint">キーワード未入力の場合は全件を表示します。</small>
+                    <div class="gallery-toolbar">
+                        <button id="editGalleryToggleBtn" class="btn btn-outline btn-sm" type="button">👁 カードを隠す</button>
+                    </div>
+                </div>
+                <div id="editGalleryContainer" class="inventory-list compact">
+                    <p class="loading">消耗品ギャラリーを読み込み中...</p>
+                </div>
+            </div>
+
+            <div class="form-container">
+                <h3 class="section-title">選択中のアイテム</h3>
+                <div class="read-only-notice" id="registerEditReadOnlyNotice" hidden>
+                    このアカウントは閲覧専用のため、内容の編集はできません。
+                </div>
+                <div id="editItemPreview" class="quick-item-card" hidden></div>
+                <div id="editFormFields" hidden>
+                    <div class="filter-group">
+                        <label for="editCode">コード *</label>
+                        <input type="text" id="editCode" class="input-field" placeholder="コード" readonly style="background-color: #f5f5f5;">
+                        <small class="import-hint">コードは変更できません</small>
+                    </div>
+                    <div class="filter-group">
+                        <label for="editOrderCode">発注コード</label>
+                        <input type="text" id="editOrderCode" class="input-field" placeholder="任意で設定できます">
+                    </div>
+                    <div class="filter-group">
+                        <label for="editName">品名 *</label>
+                        <input type="text" id="editName" class="input-field" placeholder="品名を入力" required>
+                    </div>
+                    <div class="filter-group">
+                        <label for="editCategory">カテゴリ</label>
+                        <input type="text" id="editCategory" class="input-field" placeholder="例: 事務用品">
+                    </div>
+                    <div class="filter-group">
+                        <label for="editUnit">単位</label>
+                        <input type="text" id="editUnit" class="input-field" placeholder="個 / 箱など">
+                    </div>
+                    <div class="filter-group">
+                        <label for="editStockQty">在庫数</label>
+                        <input type="number" id="editStockQty" class="input-field" placeholder="0" min="0">
+                    </div>
+                    <div class="filter-group">
+                        <label for="editSafetyStock">安全在庫</label>
+                        <input type="number" id="editSafetyStock" class="input-field" placeholder="0" min="0">
+                    </div>
+                    <div class="filter-group">
+                        <label for="editUnitPrice">単価</label>
+                        <input type="number" id="editUnitPrice" class="input-field" placeholder="0" min="0">
+                    </div>
+                    <div class="filter-group">
+                        <label for="editOrderUnit">発注単位</label>
+                        <input type="number" id="editOrderUnit" class="input-field" placeholder="1" min="1">
+                    </div>
+                    <div class="filter-group">
+                        <label for="editSupplier">購入先</label>
+                        <select id="editSupplier" class="input-field">
+                            <option value="">-- 購入先を選択 --</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label for="editStorageLocation">保管場所</label>
+                        <input type="text" id="editStorageLocation" class="input-field" placeholder="倉庫・棚番号など">
+                    </div>
+                    <div class="filter-group">
+                        <label for="editShortageStatus">在庫状態</label>
+                        <select id="editShortageStatus" class="input-field">
+                            <option value="">-- 在庫状態を選択 --</option>
+                        </select>
+                    </div>
+                    <div class="filter-group image-upload-group">
+                        <label for="editImage">商品画像</label>
+                        <input type="file" id="editImage" class="input-field file-input" accept="image/*" capture="environment">
+                        <input type="hidden" id="editImagePath">
+                        <div class="image-preview" id="editImagePreviewBox" hidden>
+                            <img src="" alt="商品画像プレビュー">
+                        </div>
+                        <div class="image-upload-actions">
+                            <button type="button" class="btn btn-secondary" id="editImageClearBtn">画像をクリア</button>
+                            <button type="button" class="btn btn-outline" id="editImageCameraBtn">📷 カメラで撮影</button>
+                        </div>
+                        <small class="import-hint">PNG/JPG/GIF 最大 5MB まで</small>
+                    </div>
+                    <div class="filter-group">
+                        <label for="editNote">備考</label>
+                        <textarea id="editNote" class="input-field" rows="3" placeholder="任意"></textarea>
+                    </div>
+                    <button id="editSubmitBtn" class="btn btn-primary primary-action" type="button">
+                        💾 内容を更新する
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- registerPage end -->

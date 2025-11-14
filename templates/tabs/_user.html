@@ -1,0 +1,297 @@
+    <div id="usersPage" class="page-content">
+        <div class="page-header">
+            <h2>👥 ユーザー管理</h2>
+            <p>ユーザーとロールを管理します</p>
+        </div>
+
+        <div class="subtab-group" id="usersSubtabs">
+            <button class="subtab-btn active" data-user-tab="list">👤 ユーザー一覧</button>
+            <button class="subtab-btn" data-user-tab="add">➕ 新規登録</button>
+            <button class="subtab-btn" data-user-tab="roles">📋 ロール管理</button>
+            <button class="subtab-btn" data-user-tab="permissions">🔧 権限設定</button>
+        </div>
+
+        <div id="usersListSection" class="detail-tab-content" data-user-content="list">
+            <div class="table-container">
+                <table class="employees-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>ユーザー名</th>
+                            <th>氏名</th>
+                            <th>メールアドレス</th>
+                            <th>役職</th>
+                            <th>状態</th>
+                            <th>作成日</th>
+                            <th>最終ログイン</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                        <tr>
+                            <td colspan="9" class="loading">読み込み中...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="usersAddSection" class="detail-tab-content" data-user-content="add" hidden>
+            <div class="form-container edit-form-panel">
+                <h3 class="section-title">新規ユーザー登録</h3>
+                <div class="filter-group">
+                    <label for="userUsername">ユーザー名 *</label>
+                    <input type="text" id="userUsername" class="input-field" placeholder="例: yamada" required>
+                </div>
+                <div class="filter-group">
+                    <label for="userFullName">氏名 *</label>
+                    <input type="text" id="userFullName" class="input-field" placeholder="例: 山田 太郎" required>
+                </div>
+                <div class="filter-group">
+                    <label for="userEmail">メールアドレス</label>
+                    <input type="email" id="userEmail" class="input-field" placeholder="yamada@example.com">
+                </div>
+                <div class="filter-group">
+                    <label for="userPassword">パスワード *</label>
+                    <input type="password" id="userPassword" class="input-field" placeholder="6文字以上" required>
+                </div>
+
+                <div class="filter-group">
+                    <label for="userSmtpHost">SMTPホスト</label>
+                    <input type="text" id="userSmtpHost" class="input-field" placeholder="smtp.gmail.com">
+                </div>
+                <div class="filter-group">
+                    <label for="userSmtpPort">SMTPポート</label>
+                    <input type="number" id="userSmtpPort" class="input-field" placeholder="587" min="1">
+                </div>
+                <div class="filter-group">
+                    <label for="userSmtpUser">SMTPユーザー</label>
+                    <input type="text" id="userSmtpUser" class="input-field" placeholder="user@example.com">
+                </div>
+                <div class="filter-group">
+                    <label for="userSmtpPassword">SMTPパスワード</label>
+                    <input type="password" id="userSmtpPassword" class="input-field" placeholder="アプリパスワードなど">
+                </div>
+
+                <div class="filter-group">
+                    <label>役職（複数選択可）</label>
+                    <div id="userRolesCheckboxes" class="checkbox-group">
+                        <!-- ロールのチェックボックスは動的に生成 -->
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label for="userActive">状態</label>
+                    <select id="userActive" class="input-field">
+                        <option value="active">有効</option>
+                        <option value="inactive">無効</option>
+                    </select>
+                </div>
+                <button id="userSubmitBtn" class="btn btn-primary primary-action" type="button">
+                    ✅ ユーザーを登録する
+                </button>
+            </div>
+        </div>
+
+        <div id="usersRolesSection" class="detail-tab-content" data-user-content="roles" hidden>
+            <div class="form-container">
+                <h3 class="section-title">ロール一覧</h3>
+                <div class="table-container">
+                    <table class="employees-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>ロール名</th>
+                                <th>説明</th>
+                                <th>ユーザー数</th>
+                                <th>作成日</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rolesTableBody">
+                            <tr>
+                                <td colspan="5" class="loading">読み込み中...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- ユーザーにロールを割り当て -->
+                <h3 class="section-title" style="margin-top: 40px;">👤 ユーザーにロールを割り当て</h3>
+                <div class="filter-row" style="align-items: flex-end; gap: 12px;">
+                    <div class="filter-group" style="flex: 1; max-width: 300px;">
+                        <label for="assignUserSelect">ユーザー選択</label>
+                        <select id="assignUserSelect" class="input-field">
+                            <option value="">ユーザーを選択...</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" style="flex: 1; max-width: 300px;">
+                        <label for="assignRoleSelect">ロール選択</label>
+                        <select id="assignRoleSelect" class="input-field">
+                            <option value="">ロールを選択...</option>
+                        </select>
+                    </div>
+                    <button id="assignRoleBtn" class="btn btn-primary" onclick="assignRoleToUser()">🔄 ロール割り当て</button>
+                </div>
+
+                <!-- 選択したユーザーの現在のロール -->
+                <div id="currentUserRoles" style="margin-top: 20px; padding: 16px; background: #f5f5f5; border-radius: 8px; display: none;">
+                    <h4 style="margin: 0 0 12px 0; font-size: 14px; color: #333;">現在のロール</h4>
+                    <div id="currentRolesList" style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <!-- 現在のロールがここに表示される -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="usersPermissionsSection" class="detail-tab-content" data-user-content="permissions" hidden>
+            <div class="form-container">
+                <h3 class="section-title">権限設定</h3>
+                <p style="color: #666; margin-bottom: 20px;">選択したロールのページアクセス権限を編集できます</p>
+
+                <!-- ロール選択 -->
+                <div class="filter-group" style="max-width: 300px; margin-bottom: 24px;">
+                    <label for="permissionRoleSelect">ロール選択</label>
+                    <select id="permissionRoleSelect" class="input-field" onchange="loadPermissionsForRole()">
+                        <option value="">ロールを選択...</option>
+                    </select>
+                </div>
+
+                <div id="permissionsEditorContainer" style="display: none;">
+                    <!-- ページ権限 -->
+                    <div style="margin-bottom: 32px;">
+                        <h4 style="margin: 0 0 16px 0; font-size: 16px; color: #333;">📄 ページ権限</h4>
+                        <div class="table-container">
+                            <table class="employees-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 200px;">ページ名</th>
+                                        <th style="width: 100px; text-align: center;">閲覧</th>
+                                        <th style="width: 100px; text-align: center;">編集</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pagePermissionsTableBody">
+                                    <!-- ページ権限がここに表示される -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- タブ権限 -->
+                    <div style="margin-bottom: 24px;">
+                        <h4 style="margin: 0 0 16px 0; font-size: 16px; color: #333;">📑 タブ権限</h4>
+                        <div class="table-container">
+                            <table class="employees-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 200px;">タブ名</th>
+                                        <th style="width: 100px; text-align: center;">閲覧</th>
+                                        <th style="width: 100px; text-align: center;">編集</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabPermissionsTableBody">
+                                    <!-- タブ権限がここに表示される -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- 保存ボタン -->
+                    <div style="text-align: left;">
+                        <button id="savePermissionsBtn" class="btn btn-primary primary-action" onclick="savePermissions()">💾 ページ権限を保存</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ユーザー編集モーダル -->
+    <div id="userEditModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>ユーザー情報の編集</h3>
+                <button class="close-btn" onclick="closeUserEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editUserId">
+                <div class="filter-group">
+                    <label for="editUserUsername">ユーザー名 *</label>
+                    <input type="text" id="editUserUsername" class="input-field" required>
+                </div>
+                <div class="filter-group">
+                    <label for="editUserFullName">氏名 *</label>
+                    <input type="text" id="editUserFullName" class="input-field" required>
+                </div>
+                <div class="filter-group">
+                    <label for="editUserEmail">メールアドレス</label>
+                    <input type="email" id="editUserEmail" class="input-field">
+                </div>
+                <div class="filter-group">
+                    <label for="editUserPassword">新しいパスワード</label>
+                    <input type="password" id="editUserPassword" class="input-field" placeholder="変更する場合のみ入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="editUserSmtpHost">SMTPホスト</label>
+                    <input type="text" id="editUserSmtpHost" class="input-field" placeholder="smtp.gmail.com">
+                </div>
+                <div class="filter-group">
+                    <label for="editUserSmtpPort">SMTPポート</label>
+                    <input type="number" id="editUserSmtpPort" class="input-field" placeholder="587" min="1">
+                </div>
+                <div class="filter-group">
+                    <label for="editUserSmtpUser">SMTPユーザー</label>
+                    <input type="text" id="editUserSmtpUser" class="input-field" placeholder="user@example.com">
+                </div>
+                <div class="filter-group">
+                    <label for="editUserSmtpPassword">SMTPパスワード</label>
+                    <input type="password" id="editUserSmtpPassword" class="input-field" placeholder="アプリパスワードなど">
+                </div>
+
+                <div class="filter-group">
+                    <label>役職（複数選択可）</label>
+                    <div id="editUserRolesCheckboxes" class="checkbox-group">
+                        <!-- ロールのチェックボックスは動的に生成 -->
+                    </div>
+                </div>
+                <div class="filter-group">
+                    <label for="editUserActive">状態</label>
+                    <select id="editUserActive" class="input-field">
+                        <option value="active">有効</option>
+                        <option value="inactive">無効</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 20px;">
+                    <button id="userUpdateBtn" class="btn btn-primary primary-action" type="button">💾 更新する</button>
+                    <button class="btn btn-outline" onclick="closeUserEditModal()" type="button">✖ キャンセル</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- パスワード変更モーダル -->
+    <div id="changePasswordModal" class="modal" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3>🔑 パスワード変更</h3>
+                <button class="close-btn" onclick="closeChangePasswordModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="filter-group">
+                    <label for="currentPassword">現在のパスワード *</label>
+                    <input type="password" id="currentPassword" class="input-field" required>
+                </div>
+                <div class="filter-group">
+                    <label for="newPassword">新しいパスワード *</label>
+                    <input type="password" id="newPassword" class="input-field" placeholder="6文字以上" required>
+                </div>
+                <div class="filter-group">
+                    <label for="confirmPassword">新しいパスワード（確認）*</label>
+                    <input type="password" id="confirmPassword" class="input-field" placeholder="再度入力してください" required>
+                </div>
+                <div style="display: flex; gap: 12px; margin-top: 20px;">
+                    <button id="changePasswordBtn" class="btn btn-primary primary-action" type="button" onclick="changePassword()">🔐 変更する</button>
+                    <button class="btn btn-outline" onclick="closeChangePasswordModal()" type="button">✖ キャンセル</button>
+                </div>
+            </div>
+        </div>
+    </div>
+

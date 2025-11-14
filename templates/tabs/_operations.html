@@ -1,0 +1,210 @@
+    <div class="subtab-container" id="operationsSubtabContainer" style="display: none;">
+        <div class="subtab-group">
+            <button class="subtab-btn active" data-subtab="inbound">📥 入庫</button>
+            <button class="subtab-btn" data-subtab="outbound">📤 出庫</button>
+            <button class="subtab-btn" data-subtab="history">📋 入出庫履歴</button>
+        </div>
+    </div>
+
+    <div id="outboundPage" class="page-content">
+        <div class="page-header">
+            <h2>出庫</h2>
+            <p>在庫から商品を出庫します</p>
+        </div>
+
+        <div class="form-container">
+            <div class="filter-group">
+                <label for="outboundQrCode">QRコード検索</label>
+                <input type="text" id="outboundQrCode" class="input-field" placeholder="QRコードを読み取る">
+                <button id="outboundScanBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
+                    QR QRスキャン
+                </button>
+            </div>
+
+            <div class="filter-group">
+                <label for="outboundSearchText">品名検索</label>
+                <input type="text" id="outboundSearchText" class="input-field" placeholder="品名で検索">
+            </div>
+
+            <div id="outboundItemInfo" class="item-info" style="display: none;">
+                <h3>商品情報</h3>
+                <div id="outboundItemDetails"></div>
+
+                <div class="filter-group">
+                    <label for="outboundQuantity">出庫数量</label>
+                    <input type="number" id="outboundQuantity" class="input-field" min="1" placeholder="出庫数量を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="outboundEmployeeCode">社員コード</label>
+                    <input type="text" id="outboundEmployeeCode" class="input-field" placeholder="社員コードを入力">
+                    <small class="import-hint">コードを入力すると自動で氏名・部署が入力されます</small>
+                </div>
+
+                <div class="filter-group">
+                    <label for="outboundPerson">出庫者</label>
+                    <input type="text" id="outboundPerson" class="input-field" placeholder="出庫者名を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="outboundDepartment">部署</label>
+                    <input type="text" id="outboundDepartment" class="input-field" placeholder="部署名を入力（任意）">
+                </div>
+
+                <div class="filter-group">
+                    <label for="outboundNote">備考</label>
+                    <textarea id="outboundNote" class="input-field" rows="3" placeholder="備考（任意）"></textarea>
+                </div>
+
+                <button type="button" id="submitOutbound" class="btn btn-primary" style="width: 100%;">
+                     出庫を確定
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="inboundPage" class="page-content">
+        <div class="page-header">
+            <h2>入庫</h2>
+            <p>商品を入庫します</p>
+        </div>
+
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" id="showManualInbound">個別入庫</button>
+            <button class="btn btn-secondary" id="showAutoInbound">注文書分入庫</button>
+        </div>
+
+        <!-- 個別入庫 -->
+        <div id="manualInboundForm" class="form-container">
+            <h3>個別入庫</h3>
+
+            <div class="filter-group">
+                <label for="inboundQrCode">QRコード検索</label>
+                <input type="text" id="inboundQrCode" class="input-field" placeholder="QRコードを読み取る">
+                <button id="inboundScanBtn" class="btn btn-primary" style="margin-top: 10px; width: 100%;">
+                    QR QRスキャン
+                </button>
+            </div>
+
+            <div class="filter-group">
+                <label for="inboundSearchText">品名検索</label>
+                <input type="text" id="inboundSearchText" class="input-field" placeholder="品名で検索">
+            </div>
+
+            <div id="inboundItemInfo" class="item-info" style="display: none;">
+                <h3>商品情報</h3>
+                <div id="inboundItemDetails"></div>
+
+                <div class="filter-group">
+                    <label for="inboundQuantity">入庫数量</label>
+                    <input type="number" id="inboundQuantity" class="input-field" min="1" placeholder="入庫数量を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="inboundEmployeeCode">社員コード</label>
+                    <input type="text" id="inboundEmployeeCode" class="input-field" placeholder="社員コードを入力">
+                    <small class="import-hint">コードを入力すると自動で氏名・部署が入力されます</small>
+                </div>
+
+                <div class="filter-group">
+                    <label for="inboundPerson">入庫者</label>
+                    <input type="text" id="inboundPerson" class="input-field" placeholder="入庫者名を入力">
+                </div>
+
+                <div class="filter-group">
+                    <label for="inboundDepartment">部署</label>
+                    <input type="text" id="inboundDepartment" class="input-field" placeholder="部署名を入力（任意）">
+                </div>
+
+                <div class="filter-group">
+                    <label for="inboundNote">備考</label>
+                    <textarea id="inboundNote" class="input-field" rows="3" placeholder="備考（任意）"></textarea>
+                </div>
+
+                <button type="button" id="submitInbound" class="btn btn-primary" style="width: 100%;">
+                     入庫を確定
+                </button>
+            </div>
+        </div>
+
+        <!-- 注文書分入庫 -->
+        <div id="autoInboundList" class="form-container" style="display: none;">
+            <h3>注文書分入庫</h3>
+            <div id="dispatchOrdersList"></div>
+        </div>
+    </div>
+
+    <div id="historyPage" class="page-content">
+        <div class="page-header">
+            <h2>📋 入出庫履歴</h2>
+            <p>出庫・入庫の履歴を確認できます。</p>
+        </div>
+
+        <div class="filter-container">
+            <h3>検索フィルター</h3>
+
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="historyType">履歴種別</label>
+                    <select id="historyType" class="input-field">
+                        <option value="all">すべて</option>
+                        <option value="outbound">出庫のみ</option>
+                        <option value="inbound">入庫のみ</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="historyDepartment">部署</label>
+                    <select id="historyDepartment" class="input-field">
+                        <option value="">すべて</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="filter-row">
+                <div class="filter-group">
+                    <label for="historyStartDate">開始日</label>
+                    <input type="date" id="historyStartDate" class="input-field">
+                </div>
+                <div class="filter-group">
+                    <label for="historyEndDate">終了日</label>
+                    <input type="date" id="historyEndDate" class="input-field">
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <label for="historySearch">品名・担当者で検索</label>
+                <input type="text" id="historySearch" class="input-field" placeholder="品名または担当者名を入力">
+            </div>
+
+            <button id="searchHistory" class="btn btn-primary">🔍 検索</button>
+        </div>
+
+        <div class="count-info">
+            <p id="historyCount">表示件数: 0</p>
+        </div>
+
+        <div class="table-container">
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>種別</th>
+                        <th>日時</th>
+                        <th>コード</th>
+                        <th>品名</th>
+                        <th>数量</th>
+                        <th>担当者</th>
+                        <th>部署</th>
+                        <th>単価</th>
+                        <th>合計金額</th>
+                        <th>備考</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    <tr>
+                        <td colspan="10" class="loading">読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>

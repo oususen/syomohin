@@ -1,0 +1,94 @@
+    <div class="subtab-container" id="dispatchSubtabContainer" style="display: none;">
+        <div class="subtab-group">
+            <button class="subtab-btn active" data-subtab="requests">📋 依頼管理</button>
+            <button class="subtab-btn" data-subtab="create">📝 注文書作成</button>
+            <button class="subtab-btn" data-subtab="send">📧 注文書送信</button>
+        </div>
+    </div>
+
+    <div id="dispatchRequestsPage" class="page-content">
+        <div class="page-header">
+            <h2>📋 依頼管理</h2>
+            <p>部下からの依頼を確認し、却下または発注準備に移行します</p>
+        </div>
+
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" onclick="loadPendingOrders()">🔄 依頼を更新</button>
+            <button class="btn btn-secondary" onclick="showAddDirectOrderModal()">➕ 消耗品を直接追加</button>
+        </div>
+
+        <div class="table-container">
+            <table class="employees-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>商品コード</th>
+                        <th>商品名</th>
+                        <th>数量</th>
+                        <th>単価</th>
+                        <th>合計金額</th>
+                        <th>納期</th>
+                        <th>依頼者</th>
+                        <th>購入先</th>
+                        <th>状態</th>
+                        <th>依頼日時</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="pendingOrdersTableBody">
+                    <tr>
+                        <td colspan="12" class="loading">読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="dispatchCreatePage" class="page-content">
+        <div class="page-header">
+            <h2>📝 注文書作成</h2>
+            <p>発注準備中のアイテムを購入先別に確認し、注文書を作成します</p>
+        </div>
+
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" onclick="loadDispatchItems()">🔄 データを更新</button>
+        </div>
+
+        <div id="dispatchItemsContainer">
+            <p class="loading">読み込み中...</p>
+        </div>
+    </div>
+
+    <div id="dispatchSendPage" class="page-content">
+        <div class="page-header">
+            <h2>📧 注文書送信</h2>
+            <p>作成済みの注文書を確認し、購入先にメール送信します</p>
+        </div>
+
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" onclick="loadDispatchOrders()">🔄 注文書を更新</button>
+        </div>
+
+        <div class="table-container">
+            <table class="employees-table">
+                <thead>
+                    <tr>
+                        <th>注文書番号</th>
+                        <th>購入先</th>
+                        <th>明細数</th>
+                        <th>合計金額</th>
+                        <th>状態</th>
+                        <th>作成者</th>
+                        <th>作成日時</th>
+                        <th>送信日時</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="dispatchOrdersTableBody">
+                    <tr>
+                        <td colspan="9" class="loading">読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>

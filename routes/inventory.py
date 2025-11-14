@@ -260,7 +260,7 @@ def get_filter_options():
         db = get_db_manager()
 
         # 注文状態の選択肢（固定リスト）
-        order_status_list = ["すべて", "依頼中", "発注準備", "発注済み", "未発注"]
+        order_status_list = ["すべて", "依頼中", "発注準備", "発注済み", "入庫済み", "却下"]
 
         # 欠品状態の選択肢（固定リスト）
         shortage_status_list = ["すべて", "在庫あり", "要注意", "欠品"]
@@ -405,12 +405,12 @@ def create_inbound():
             },
         )
 
-        # 在庫数を増やす
+        # 在庫数を増やし、注文状態を「入庫済み」に更新
         new_stock = current_stock + quantity
         new_status = calculate_shortage_status(new_stock, safety_stock)
         db.execute_update(
-            "UPDATE consumables SET stock_quantity = :stock, shortage_status = :status WHERE id = :id",
-            {"stock": new_stock, "status": new_status, "id": consumable_id},
+            "UPDATE consumables SET stock_quantity = :stock, shortage_status = :status, order_status = :order_status WHERE id = :id",
+            {"stock": new_stock, "status": new_status, "order_status": "入庫済み", "id": consumable_id},
         )
 
         return jsonify({"success": True, "message": "入庫を記録しました", "new_stock": new_stock})
