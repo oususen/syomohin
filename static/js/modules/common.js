@@ -94,7 +94,7 @@ function setupEventListeners() {
     document.getElementById('showAutoInbound').addEventListener('click', () => {
         document.getElementById('manualInboundForm').style.display = 'none';
         document.getElementById('autoInboundList').style.display = 'block';
-        window.loadPendingOrders();
+        window.loadDispatchOrdersForInbound();
     });
     document.getElementById('inboundQrCode').addEventListener('input', () => window.loadItemInfo('inbound'));
     document.getElementById('inboundScanBtn').addEventListener('click', () => {

@@ -380,3 +380,121 @@ def create_inbound():
 
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@inventory_bp.route("/api/operations/dispatch-inbound", methods=["POST"])
+def create_dispatch_inbound():
+    """注文書分入庫を一括処理するAPI"""
+    try:
+        data = request.get_json()
+        db = get_db_manager()
+
+        # 必須パラメータチェック
+        dispatch_order_id = data.get("dispatch_order_id")
+        person = data.get("person")
+
+        if not all([dispatch_order_id, person]):
+            return jsonify({"success": False, "error": "必須パラメータが不足しています"}), 400
+
+        # 注文書の商品一覧を取得
+        items_df = db.execute_query(
+            """
+            SELECT
+                id, consumable_id, code, name, quantity, unit, unit_price
+            FROM dispatch_order_items
+            WHERE dispatch_order_id = :dispatch_order_id
+            AND consumable_id IS NOT NULL
+            """,
+            {"dispatch_order_id": dispatch_order_id}
+        )
+
+        if items_df.empty:
+            return jsonify({"success": False, "error": "注文書に商品が見つかりません"}), 404
+
+        # 各商品について入庫処理を実行
+        inbound_count = 0
+        errors = []
+
+        for _, item in items_df.iterrows():
+            try:
+                consumable_id = int(item["consumable_id"])
+                code = str(item["code"])
+                name = str(item["name"])
+                quantity = int(item["quantity"])
+                unit_price = float(item["unit_price"]) if item["unit_price"] else 0
+
+                # 消耗品の現在情報を取得
+                consumable_df = db.execute_query(
+                    "SELECT stock_quantity, safety_stock FROM consumables WHERE id = :id",
+                    {"id": consumable_id}
+                )
+
+                if consumable_df.empty:
+                    errors.append(f"{name}({code}): 商品が見つかりません")
+                    continue
+
+                consumable = consumable_df.iloc[0]
+                current_stock = int(consumable["stock_quantity"])
+                safety_stock = int(consumable["safety_stock"]) if consumable["safety_stock"] is not None else 0
+
+                # 入庫履歴を登録
+                total_amount = quantity * unit_price
+                db.execute_update(
+                    """
+                    INSERT INTO inbound_history (
+                        consumable_id, code, name, quantity, employee_name, employee_department,
+                        unit_price, total_amount, note, inbound_type, inbound_date
+                    ) VALUES (
+                        :consumable_id, :code, :name, :quantity, :employee_name, :employee_department,
+                        :unit_price, :total_amount, :note, :inbound_type, NOW()
+                    )
+                    """,
+                    {
+                        "consumable_id": consumable_id,
+                        "code": code,
+                        "name": name,
+                        "quantity": quantity,
+                        "employee_name": person,
+                        "employee_department": data.get("department", ""),
+                        "unit_price": unit_price,
+                        "total_amount": total_amount,
+                        "note": data.get("note", f"注文書一括入庫（注文書ID: {dispatch_order_id}）"),
+                        "inbound_type": "注文書",
+                    }
+                )
+
+                # 在庫数を増やす
+                new_stock = current_stock + quantity
+                new_status = calculate_shortage_status(new_stock, safety_stock)
+                db.execute_update(
+                    "UPDATE consumables SET stock_quantity = :stock, shortage_status = :status WHERE id = :id",
+                    {"stock": new_stock, "status": new_status, "id": consumable_id}
+                )
+
+                inbound_count += 1
+
+            except Exception as item_error:
+                errors.append(f"{name}({code}): {str(item_error)}")
+                continue
+
+        # 結果をまとめて返す
+        if inbound_count == 0:
+            return jsonify({
+                "success": False,
+                "error": "すべての商品の入庫に失敗しました",
+                "errors": errors
+            }), 500
+
+        message = f"{inbound_count}件の商品を入庫しました"
+        if errors:
+            message += f"（{len(errors)}件のエラーがありました）"
+
+        return jsonify({
+            "success": True,
+            "message": message,
+            "inbound_count": inbound_count,
+            "errors": errors if errors else None
+        })
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500

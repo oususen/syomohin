@@ -663,6 +663,232 @@ async function decodeQRCode(imageData) {
 
 // 成功メッセージを表示
 
+// 注文書分入庫：注文書一覧を読み込み
+async function loadDispatchOrdersForInbound() {
+    const container = document.getElementById('dispatchOrdersList');
+    container.innerHTML = '<p class="loading">読み込み中...</p>';
+
+    try {
+        const response = await fetch('/api/dispatch/orders');
+        const data = await response.json();
+
+        if (!data.success) {
+            container.innerHTML = `<p class="error">エラー: ${data.error}</p>`;
+            return;
+        }
+
+        const orders = data.data;
+
+        if (!orders || orders.length === 0) {
+            container.innerHTML = '<p class="empty-state">発注済みの注文書がありません。</p>';
+            return;
+        }
+
+        // 注文書リストを表示
+        let html = '<div class="dispatch-orders-list">';
+        orders.forEach(order => {
+            const createdAt = order.created_at ? order.created_at.split(' ')[0] : '-';
+            const sentAt = order.sent_at ? order.sent_at.split(' ')[0] : '-';
+            const status = order.status || '未送信';
+
+            html += `
+                <div class="dispatch-order-card" onclick="window.selectDispatchOrderForInbound(${order.id})">
+                    <div class="order-card-header">
+                        <h4>${order.order_number}</h4>
+                        <span class="status-badge status-${status}">${status}</span>
+                    </div>
+                    <div class="order-card-body">
+                        <div class="order-info-row">
+                            <span><strong>購入先:</strong> ${order.supplier_name || '-'}</span>
+                            <span><strong>商品数:</strong> ${order.total_items || 0}件</span>
+                        </div>
+                        <div class="order-info-row">
+                            <span><strong>合計金額:</strong> ¥${(order.total_amount || 0).toLocaleString()}</span>
+                            <span><strong>作成日:</strong> ${createdAt}</span>
+                        </div>
+                        ${order.sent_at ? `<div class="order-info-row"><span><strong>送信日:</strong> ${sentAt}</span></div>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error('注文書一覧の取得に失敗:', error);
+        container.innerHTML = '<p class="error">注文書一覧の取得に失敗しました。</p>';
+    }
+}
+
+// 注文書分入庫：注文書を選択して詳細を表示
+async function selectDispatchOrderForInbound(orderId) {
+    const container = document.getElementById('dispatchOrdersList');
+    container.innerHTML = '<p class="loading">注文書詳細を読み込み中...</p>';
+
+    try {
+        const response = await fetch(`/api/dispatch/orders/${orderId}`);
+        const data = await response.json();
+
+        if (!data.success) {
+            showError(data.error || '注文書の取得に失敗しました');
+            loadDispatchOrdersForInbound();
+            return;
+        }
+
+        const order = data.data;
+        const items = order.items || [];
+
+        let html = `
+            <div class="dispatch-order-detail">
+                <div class="detail-header">
+                    <button class="btn btn-secondary btn-sm" onclick="window.loadDispatchOrdersForInbound()">
+                        ← 注文書一覧に戻る
+                    </button>
+                    <h3>${order.order_number}</h3>
+                </div>
+
+                <div class="order-summary">
+                    <div class="summary-row">
+                        <span><strong>購入先:</strong> ${order.supplier_name || '-'}</span>
+                        <span><strong>商品数:</strong> ${items.length}件</span>
+                    </div>
+                    <div class="summary-row">
+                        <span><strong>合計金額:</strong> ¥${(order.total_amount || 0).toLocaleString()}</span>
+                        <span><strong>作成日:</strong> ${order.created_at || '-'}</span>
+                    </div>
+                </div>
+
+                <h4>注文商品一覧</h4>
+                <div class="order-items-list">
+        `;
+
+        items.forEach((item, index) => {
+            html += `
+                <div class="order-item-card">
+                    <div class="item-number">${index + 1}</div>
+                    <div class="item-details">
+                        <div class="item-name"><strong>${item.name || '-'}</strong></div>
+                        <div class="item-info">
+                            <span>コード: ${item.code || '-'}</span>
+                            <span>数量: ${item.quantity || 0} ${item.unit || '個'}</span>
+                            <span>単価: ¥${(item.unit_price || 0).toLocaleString()}</span>
+                        </div>
+                        ${item.deadline ? `<div class="item-deadline">納期: ${item.deadline}</div>` : ''}
+                    </div>
+                </div>
+            `;
+        });
+
+        html += `
+                </div>
+
+                <div class="inbound-action-section">
+                    <h4>入庫情報</h4>
+                    <div class="filter-group">
+                        <label for="dispatchInboundEmployeeCode">社員コード</label>
+                        <input type="text" id="dispatchInboundEmployeeCode" class="input-field" placeholder="社員コードを入力">
+                        <small class="import-hint">コードを入力すると自動で氏名・部署が入力されます</small>
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="dispatchInboundPerson">入庫者</label>
+                        <input type="text" id="dispatchInboundPerson" class="input-field" placeholder="入庫者名を入力">
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="dispatchInboundDepartment">部署</label>
+                        <input type="text" id="dispatchInboundDepartment" class="input-field" placeholder="部署名を入力（任意）">
+                    </div>
+
+                    <div class="filter-group">
+                        <label for="dispatchInboundNote">備考</label>
+                        <textarea id="dispatchInboundNote" class="input-field" rows="3" placeholder="備考（任意）"></textarea>
+                    </div>
+
+                    <button type="button" class="btn btn-primary" style="width: 100%;" onclick="window.submitDispatchOrderInbound(${orderId})">
+                        📥 この注文書の商品を一括入庫
+                    </button>
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+        // 社員コード入力時の自動補完
+        const employeeCodeInput = document.getElementById('dispatchInboundEmployeeCode');
+        if (employeeCodeInput) {
+            employeeCodeInput.addEventListener('input', async () => {
+                const code = employeeCodeInput.value.trim();
+                if (code) {
+                    await loadEmployeeByCodeForDispatchInbound(code);
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('注文書詳細の取得に失敗:', error);
+        showError('注文書詳細の取得に失敗しました');
+        loadDispatchOrdersForInbound();
+    }
+}
+
+// 注文書分入庫：社員情報を読み込み
+async function loadEmployeeByCodeForDispatchInbound(code) {
+    try {
+        const response = await fetch(`/api/employees/${code}`);
+        const data = await response.json();
+
+        if (data.success && data.employee) {
+            const emp = data.employee;
+            document.getElementById('dispatchInboundPerson').value = emp.name || '';
+            document.getElementById('dispatchInboundDepartment').value = emp.department || '';
+        }
+    } catch (error) {
+        console.error('社員情報の取得に失敗:', error);
+    }
+}
+
+// 注文書分入庫：注文書の商品を一括入庫
+async function submitDispatchOrderInbound(orderId) {
+    const person = document.getElementById('dispatchInboundPerson').value.trim();
+    const department = document.getElementById('dispatchInboundDepartment').value.trim();
+    const note = document.getElementById('dispatchInboundNote').value.trim();
+
+    if (!person) {
+        showError('入庫者を入力してください');
+        return;
+    }
+
+    if (!confirm('この注文書の全商品を入庫しますか？')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/operations/dispatch-inbound', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                dispatch_order_id: orderId,
+                person: person,
+                department: department,
+                note: note
+            })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSuccess(data.message || '入庫が完了しました');
+            loadDispatchOrdersForInbound();
+        } else {
+            showError(data.error || '入庫に失敗しました');
+        }
+    } catch (error) {
+        console.error('入庫処理に失敗:', error);
+        showError('入庫処理に失敗しました');
+    }
+}
+
 // グローバルに公開（common.jsから呼び出せるように）
 window.submitInbound = submitInbound;
 window.submitOutbound = submitOutbound;
@@ -675,3 +901,6 @@ window.closeCamera = closeCamera;
 window.capturePhoto = capturePhoto;
 window.loadPendingOrders = loadPendingOrders;
 window.loadManualOrders = loadManualOrders;
+window.loadDispatchOrdersForInbound = loadDispatchOrdersForInbound;
+window.selectDispatchOrderForInbound = selectDispatchOrderForInbound;
+window.submitDispatchOrderInbound = submitDispatchOrderInbound;
