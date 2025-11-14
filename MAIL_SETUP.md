@@ -3,7 +3,61 @@
 ## 概要
 注文書をメールで送信するための設定手順です。
 
-## 設定手順
+## 設定方法の選択
+
+以下の2つの方法から選択できます：
+
+### 方法1: Windows環境変数（推奨）
+- **メリット**: PC全体で利用可能、管理しやすい
+- **デメリット**: 管理者権限が必要
+- **用途**: 本番サーバー、個人PC
+
+### 方法2: .envファイル
+- **メリット**: 管理者権限不要、プロジェクト単位で設定
+- **デメリット**: プロジェクトごとに設定が必要
+- **用途**: 開発環境、複数プロジェクト
+
+---
+
+## 方法1: Windows環境変数で設定（推奨）
+
+### 自動設定（推奨）
+
+1. **setup_env.cmd を管理者権限で実行**
+   - `setup_env.cmd`を右クリック → 「管理者として実行」
+   - 画面の指示に従ってメール設定を入力
+
+2. **設定の確認**
+   ```bash
+   check_env.cmd
+   ```
+
+3. **アプリケーションを再起動**
+
+### 手動設定
+
+コマンドプロンプトを管理者権限で開いて、以下のコマンドを実行：
+
+```cmd
+setx SMTP_HOST "smtp.gmail.com" /M
+setx SMTP_PORT "587" /M
+setx SMTP_USER "your-email@gmail.com" /M
+setx SMTP_PASSWORD "your-app-password" /M
+setx FROM_EMAIL "your-email@gmail.com" /M
+setx FROM_NAME "ダイソウ工業株式会社" /M
+```
+
+### 環境変数の削除
+
+設定を削除する場合：
+```bash
+# 管理者権限で実行
+remove_env.cmd
+```
+
+---
+
+## 方法2: .envファイルで設定
 
 ### 1. `.env`ファイルの作成
 
@@ -30,6 +84,8 @@ SMTP_PASSWORD=your-app-password
 FROM_EMAIL=your-email@gmail.com
 FROM_NAME=ダイソウ工業株式会社
 ```
+
+---
 
 ## Gmail を使用する場合
 
