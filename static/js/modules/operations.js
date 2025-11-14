@@ -691,6 +691,17 @@ async function loadDispatchOrdersForInbound() {
             const sentAt = order.sent_at ? order.sent_at.split(' ')[0] : '-';
             const status = order.status || '未送信';
 
+            // 商品リストのHTML生成
+            const items = order.items || [];
+            let itemsHtml = '';
+            if (items.length > 0) {
+                itemsHtml = '<div class="order-items-preview">';
+                items.forEach(item => {
+                    itemsHtml += `<div class="item-preview">${item.name || '-'} × ${item.quantity || 0}${item.unit || '個'}</div>`;
+                });
+                itemsHtml += '</div>';
+            }
+
             html += `
                 <div class="dispatch-order-card" onclick="window.selectDispatchOrderForInbound(${order.id})">
                     <div class="order-card-header">
@@ -707,6 +718,7 @@ async function loadDispatchOrdersForInbound() {
                             <span><strong>作成日:</strong> ${createdAt}</span>
                         </div>
                         ${order.sent_at ? `<div class="order-info-row"><span><strong>送信日:</strong> ${sentAt}</span></div>` : ''}
+                        ${itemsHtml}
                     </div>
                 </div>
             `;
