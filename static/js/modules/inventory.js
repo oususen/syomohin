@@ -122,13 +122,14 @@ function renderInventory(items) {
             `;
         }
 
-        // 発注済み注文の詳細HTML
+        // 発注済み注文の詳細HTML（直近2件のみ）
         let completedOrdersHtml = '';
         if (orderStatus === '発注済み' && completedOrders.length > 0) {
+            const recentOrders = completedOrders.slice(0, 2); // 直近2件のみ
             completedOrdersHtml = `
                 <div class="order-details-section completed-order-section">
-                    <div class="order-details-title">📦 発注詳細</div>
-                    ${completedOrders.map(order => `
+                    <div class="order-details-title">📦 発注詳細（直近2件）</div>
+                    ${recentOrders.map(order => `
                         <div class="order-detail-item">
                             <span>注文日: ${order['注文日'] || '-'}</span>
                             <span>注文数量: <strong>${order['注文数量'] || 0}</strong> ${unit}</span>
