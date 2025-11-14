@@ -281,7 +281,7 @@ async function addDirectOrderFromCard(consumableId, code, name, unit, unitPrice,
             body: JSON.stringify({
                 consumable_id: consumableId,
                 quantity: quantity,
-                deadline: '通常',
+                deadline: null,
                 note: ''
             })
         });
@@ -407,12 +407,9 @@ async function loadDispatchItems() {
                                     <td>¥${(item.unit_price || 0).toLocaleString()}</td>
                                     <td>¥${(item.total_amount || 0).toLocaleString()}</td>
                                     <td>
-                                        <select style="width: 100px;" class="input-field"
-                                                onchange="updateDispatchItem(${item.id}, 'deadline', this.value)">
-                                            <option value="最短" ${item.deadline === '最短' ? 'selected' : ''}>最短</option>
-                                            <option value="通常" ${item.deadline === '通常' ? 'selected' : ''}>通常</option>
-                                            <option value="余裕あり" ${item.deadline === '余裕あり' ? 'selected' : ''}>余裕あり</option>
-                                        </select>
+                                        <input type="date" style="width: 140px;" class="input-field"
+                                               value="${item.deadline || ''}"
+                                               onchange="updateDispatchItem(${item.id}, 'deadline', this.value)">
                                     </td>
                                     <td style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${item.note || '-'}</td>
                                     <td>
