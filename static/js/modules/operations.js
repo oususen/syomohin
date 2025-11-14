@@ -650,3 +650,15 @@ async function decodeQRCode(imageData) {
 
 // 成功メッセージを表示
 
+// グローバルに公開（common.jsから呼び出せるように）
+window.submitInbound = submitInbound;
+window.submitOutbound = submitOutbound;
+window.submitOrder = submitOrder;
+window.loadItemInfo = loadItemInfo;
+window.searchItemByName = searchItemByName;
+window.loadEmployeeByCode = loadEmployeeByCode;
+window.openCamera = openCamera;
+window.closeCamera = closeCamera;
+window.capturePhoto = capturePhoto;
+window.loadPendingOrders = loadPendingOrders;
+window.loadManualOrders = loadManualOrders;
