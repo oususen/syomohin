@@ -177,9 +177,9 @@ class PurchaseOrderGenerator:
 
         # 合計行を追加
         total_row = [
+            '合計',  # No列に合計
             '',
             '',
-            '合計',
             str(total_quantity),
             '',
             '',
@@ -213,8 +213,7 @@ class PurchaseOrderGenerator:
             ('WORDWRAP', (2, 0), (2, -1), True),  # 商品名の自動折り返し
             ('WORDWRAP', (9, 0), (9, -1), True),  # 備考の自動折り返し
             # 合計行のスタイル
-            ('SPAN', (0, last_row), (2, last_row)),  # 最初の3列を結合
-            ('ALIGN', (0, last_row), (2, last_row), 'CENTER'),  # 合計テキスト中央揃え
+            ('ALIGN', (0, last_row), (0, last_row), 'CENTER'),  # 合計テキスト中央揃え
             ('BACKGROUND', (0, last_row), (-1, last_row), colors.lightgrey),  # 合計行背景色
             ('FONT', (0, last_row), (-1, last_row), self.font_name, 8),  # 合計行フォントサイズ
         ]))
