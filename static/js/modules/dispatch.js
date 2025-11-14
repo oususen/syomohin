@@ -569,7 +569,7 @@ async function loadDispatchOrders() {
                         📄
                     </button>
                     ${order.status === '未送信' ? `
-                        <button class="btn-small btn-primary" onclick="showSendOrderModal(${order.id}, '${order.supplier_name}')" title="送信">
+                        <button class="btn-small btn-primary" onclick="showSendOrderModal(${order.id}, '${order.supplier_name}', '${order.supplier_email || ''}')" title="送信">
                             📧
                         </button>
                     ` : ''}
@@ -670,18 +670,22 @@ function closeDispatchOrderDetailModal() {
     }
 }
 
-async function showSendOrderModal(orderId, supplierName) {
-    const email = prompt(`${supplierName} に送信するメールアドレスを入力してください:`);
-
-    if (!email) return;
-
-    // 簡易的なメールアドレス検証
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        showError('有効なメールアドレスを入力してください');
+async function showSendOrderModal(orderId, supplierName, supplierEmail) {
+    // メールアドレスが設定されていない場合はエラー
+    if (!supplierEmail || supplierEmail.trim() === '') {
+        showError(`${supplierName} のメールアドレスが設定されていません。購入先管理画面でメールアドレスを設定してください。`);
         return;
     }
 
-    if (!confirm(`${email} に注文書を送信しますか？`)) return;
+    // 簡易的なメールアドレス検証
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(supplierEmail)) {
+        showError('購入先のメールアドレスが無効です。購入先管理画面で正しいメールアドレスを設定してください。');
+        return;
+    }
+
+    if (!confirm(`${supplierName} (${supplierEmail}) に注文書を送信しますか？`)) return;
+
+    const email = supplierEmail;
 
     try {
         const response = await fetch(`/api/dispatch/orders/${orderId}/send`, {

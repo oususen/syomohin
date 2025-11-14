@@ -465,20 +465,22 @@ def get_dispatch_orders():
 
         query = """
             SELECT
-                id,
-                order_number,
-                supplier_id,
-                supplier_name,
-                total_items,
-                total_amount,
-                status,
-                created_by,
-                created_at,
-                sent_at,
-                sent_email,
-                note
-            FROM dispatch_orders
-            ORDER BY created_at DESC
+                do.id,
+                do.order_number,
+                do.supplier_id,
+                do.supplier_name,
+                do.total_items,
+                do.total_amount,
+                do.status,
+                do.created_by,
+                do.created_at,
+                do.sent_at,
+                do.sent_email,
+                do.note,
+                s.email as supplier_email
+            FROM dispatch_orders do
+            LEFT JOIN suppliers s ON do.supplier_id = s.id
+            ORDER BY do.created_at DESC
         """
         df = db.execute_query(query)
 
@@ -510,10 +512,12 @@ def get_dispatch_order_detail(order_id: int):
         order_df = db.execute_query(
             """
             SELECT
-                id, order_number, supplier_id, supplier_name, total_items, total_amount,
-                status, created_by, created_at, sent_at, sent_email, note
-            FROM dispatch_orders
-            WHERE id = :id
+                do.id, do.order_number, do.supplier_id, do.supplier_name, do.total_items, do.total_amount,
+                do.status, do.created_by, do.created_at, do.sent_at, do.sent_email, do.note,
+                s.email as supplier_email
+            FROM dispatch_orders do
+            LEFT JOIN suppliers s ON do.supplier_id = s.id
+            WHERE do.id = :id
             """,
             {"id": order_id}
         )
