@@ -281,7 +281,7 @@ async function addDirectOrderFromCard(consumableId, code, name, unit, unitPrice,
             body: JSON.stringify({
                 consumable_id: consumableId,
                 quantity: quantity,
-                deadline: null,
+                deadline: '最短',
                 note: ''
             })
         });

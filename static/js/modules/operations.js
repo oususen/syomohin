@@ -388,7 +388,7 @@ async function submitOrder() {
             body: JSON.stringify({
                 code: code,
                 quantity: quantity,
-                deadline: deadline || null,
+                deadline: deadline || '最短',
                 requester: requester,
                 note: note,
                 order_type: '手動'
