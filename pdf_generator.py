@@ -155,7 +155,7 @@ class PurchaseOrderGenerator:
         for idx, item in enumerate(items, 1):
             row = [
                 str(idx),
-                item.get('code', ''),
+                item.get('order_code', ''),  # 発注コードを使用
                 item.get('name', ''),
                 str(item.get('quantity', '')),
                 item.get('unit', ''),
@@ -217,9 +217,33 @@ def generate_purchase_order_pdf(order_data, items, output_dir="uploads/purchase_
     # 出力ディレクトリを作成
     os.makedirs(output_dir, exist_ok=True)
 
+    # ファイル名を生成: {日付}_{購入先}_{合計金額}_注文書_{回数}.pdf
+    # 日付
+    created_at = order_data.get('created_at')
+    if created_at:
+        if hasattr(created_at, 'strftime'):
+            date_str = created_at.strftime("%Y%m%d")
+        else:
+            try:
+                from datetime import datetime as dt
+                date_str = dt.fromisoformat(str(created_at)).strftime("%Y%m%d")
+            except:
+                date_str = datetime.now().strftime("%Y%m%d")
+    else:
+        date_str = datetime.now().strftime("%Y%m%d")
+
+    # 購入先名
+    supplier_name = order_data.get('supplier_name', '不明')
+
+    # 合計金額を計算
+    total_amount = sum(item.get('total_amount', 0) for item in items)
+    total_amount_str = str(int(total_amount))
+
+    # 回数（order_data から取得、なければ1）
+    count = order_data.get('daily_count', 1)
+
     # ファイル名を生成
-    order_number = order_data.get('order_number', 'PO-UNKNOWN')
-    filename = f"{order_number}.pdf"
+    filename = f"{date_str}_{supplier_name}_{total_amount_str}_注文書_{count}.pdf"
     output_path = os.path.join(output_dir, filename)
 
     # PDF生成

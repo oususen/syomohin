@@ -311,10 +311,11 @@ def create_dispatch_order():
         items_df = db.execute_query(
             f"""
             SELECT
-                id, consumable_id, code, name, quantity, unit,
-                unit_price, total_amount, deadline, note
-            FROM orders
-            WHERE id IN ({placeholders}) AND status = '発注準備' AND supplier_id = :supplier_id
+                o.id, o.consumable_id, o.code, c.order_code, o.name, o.quantity, o.unit,
+                o.unit_price, o.total_amount, o.deadline, o.note
+            FROM orders o
+            LEFT JOIN consumables c ON o.consumable_id = c.id
+            WHERE o.id IN ({placeholders}) AND o.status = '発注準備' AND o.supplier_id = :supplier_id
             """,
             {**item_params, "supplier_id": supplier_id}
         )
@@ -329,6 +330,18 @@ def create_dispatch_order():
         # 現在のユーザー
         created_by = session.get("full_name", session.get("username", "システム"))
 
+        # 当日の同一購入先の注文書数を取得（回数計算のため）
+        today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        daily_count_df = db.execute_query(
+            """
+            SELECT COUNT(*) as count FROM dispatch_orders
+            WHERE supplier_id = :supplier_id
+            AND created_at >= :today_start
+            """,
+            {"supplier_id": supplier_id, "today_start": today_start}
+        )
+        daily_count = int(daily_count_df.iloc[0]["count"]) + 1
+
         # PDFを先に生成
         pdf_path = None
         try:
@@ -338,12 +351,14 @@ def create_dispatch_order():
                 "contact_person": str(contact_person) if contact_person else "",
                 "created_by": str(created_by),
                 "created_at": datetime.now(),
-                "note": str(note) if note else ""
+                "note": str(note) if note else "",
+                "daily_count": int(daily_count)
             }
             # DataFrameをPython標準型の辞書リストに変換
             items_for_pdf = []
             for _, item in items_df.iterrows():
                 items_for_pdf.append({
+                    "order_code": str(item["order_code"]) if pd.notna(item["order_code"]) else "",
                     "code": str(item["code"]) if pd.notna(item["code"]) else "",
                     "name": str(item["name"]) if pd.notna(item["name"]) else "",
                     "quantity": int(item["quantity"]) if pd.notna(item["quantity"]) else 0,
@@ -396,10 +411,10 @@ def create_dispatch_order():
             db.execute_update(
                 """
                 INSERT INTO dispatch_order_items (
-                    dispatch_order_id, consumable_id, code, name, quantity, unit,
+                    dispatch_order_id, consumable_id, code, order_code, name, quantity, unit,
                     unit_price, total_amount, deadline, note, original_order_id
                 ) VALUES (
-                    :dispatch_order_id, :consumable_id, :code, :name, :quantity, :unit,
+                    :dispatch_order_id, :consumable_id, :code, :order_code, :name, :quantity, :unit,
                     :unit_price, :total_amount, :deadline, :note, :original_order_id
                 )
                 """,
@@ -407,6 +422,7 @@ def create_dispatch_order():
                     "dispatch_order_id": int(dispatch_order_id),
                     "consumable_id": int(item["consumable_id"]) if pd.notna(item["consumable_id"]) else None,
                     "code": str(item["code"]) if pd.notna(item["code"]) else None,
+                    "order_code": str(item["order_code"]) if pd.notna(item["order_code"]) else None,
                     "name": str(item["name"]) if pd.notna(item["name"]) else None,
                     "quantity": int(item["quantity"]) if pd.notna(item["quantity"]) else 0,
                     "unit": str(item["unit"]) if pd.notna(item["unit"]) else None,
@@ -573,7 +589,7 @@ def _get_or_generate_pdf(order_id: int):
     items_df = db.execute_query(
         """
         SELECT
-            code, name, quantity, unit, unit_price, total_amount, deadline, note
+            order_code, code, name, quantity, unit, unit_price, total_amount, deadline, note
         FROM dispatch_order_items
         WHERE dispatch_order_id = :dispatch_order_id
         ORDER BY id
@@ -584,6 +600,36 @@ def _get_or_generate_pdf(order_id: int):
     if items_df.empty:
         raise ValueError("注文書明細が見つかりません")
 
+    # 当日の同一購入先の注文書数を計算（この注文書が何番目か）
+    created_at = order_data.get('created_at')
+    if created_at:
+        if hasattr(created_at, 'date'):
+            order_date = created_at.date()
+        else:
+            try:
+                from datetime import datetime as dt
+                order_date = dt.fromisoformat(str(created_at)).date()
+            except:
+                order_date = datetime.now().date()
+    else:
+        order_date = datetime.now().date()
+
+    # その日の0時から現在の注文書の作成時刻までの同一購入先の注文書数を取得
+    daily_count_df = db.execute_query(
+        """
+        SELECT COUNT(*) as count FROM dispatch_orders
+        WHERE supplier_id = :supplier_id
+        AND DATE(created_at) = :order_date
+        AND created_at <= :created_at
+        """,
+        {
+            "supplier_id": order_data.get('supplier_id'),
+            "order_date": order_date,
+            "created_at": created_at if created_at else datetime.now()
+        }
+    )
+    daily_count = int(daily_count_df.iloc[0]["count"]) if not daily_count_df.empty else 1
+
     # PDFを再生成（contact_personをPython標準型に変換）
     order_data_for_pdf = {
         "order_number": str(order_data.get('order_number', '')),
@@ -591,7 +637,8 @@ def _get_or_generate_pdf(order_id: int):
         "contact_person": str(order_data.get('contact_person', '')) if pd.notna(order_data.get('contact_person')) else "",
         "created_by": str(order_data.get('created_by', '')),
         "created_at": order_data.get('created_at'),
-        "note": str(order_data.get('note', '')) if order_data.get('note') else ""
+        "note": str(order_data.get('note', '')) if order_data.get('note') else "",
+        "daily_count": int(daily_count)
     }
     items = items_df.to_dict(orient="records")
     pdf_path = generate_purchase_order_pdf(order_data_for_pdf, items)
