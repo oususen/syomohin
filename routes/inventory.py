@@ -185,11 +185,8 @@ def get_filter_options():
     try:
         db = get_db_manager()
 
-        # 注文状態の選択肢
-        order_status_df = db.execute_query(
-            "SELECT DISTINCT order_status FROM consumables WHERE order_status IS NOT NULL ORDER BY order_status"
-        )
-        order_status_list = ["すべて"] + order_status_df["order_status"].tolist()
+        # 注文状態の選択肢（固定リスト）
+        order_status_list = ["すべて", "依頼中", "発注準備", "発注済み", "未発注"]
 
         # 欠品状態の選択肢（固定リスト）
         shortage_status_list = ["すべて", "在庫あり", "要注意", "欠品"]
