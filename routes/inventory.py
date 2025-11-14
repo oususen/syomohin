@@ -7,6 +7,7 @@ import base64
 
 import cv2
 import numpy as np
+import pandas as pd
 from flask import Blueprint, jsonify, request
 from PIL import Image
 from io import BytesIO
@@ -94,43 +95,51 @@ def get_inventory():
 
         # 各商品の依頼中の注文情報を取得
         if not df.empty:
-            consumable_ids = df['id'].tolist()
-            placeholders = ','.join([f':id{i}' for i in range(len(consumable_ids))])
-            order_params = {f'id{i}': cid for i, cid in enumerate(consumable_ids)}
+            try:
+                consumable_ids = df['id'].tolist()
+                placeholders = ','.join([f':id{i}' for i in range(len(consumable_ids))])
+                order_params = {f'id{i}': cid for i, cid in enumerate(consumable_ids)}
 
-            orders_query = f"""
-                SELECT
-                    o.consumable_id,
-                    o.requested_date AS 依頼日,
-                    o.requester_name AS 依頼者,
-                    o.quantity AS 依頼数量,
-                    o.deadline AS 納期,
-                    o.ordered_date AS 注文日
-                FROM orders o
-                WHERE o.consumable_id IN ({placeholders})
-                AND o.status = '依頼中'
-                ORDER BY o.requested_date DESC
-            """
+                orders_query = f"""
+                    SELECT
+                        o.consumable_id,
+                        o.requested_date AS 依頼日,
+                        o.requester_name AS 依頼者,
+                        o.quantity AS 依頼数量,
+                        o.deadline AS 納期,
+                        o.ordered_date AS 注文日
+                    FROM orders o
+                    WHERE o.consumable_id IN ({placeholders})
+                    AND o.status = '依頼中'
+                    ORDER BY o.requested_date DESC
+                """
 
-            orders_df = db.execute_query(orders_query, order_params)
+                orders_df = db.execute_query(orders_query, order_params)
 
-            # 商品ごとに注文情報をグループ化
-            orders_dict = {}
-            if not orders_df.empty:
-                for _, order in orders_df.iterrows():
-                    consumable_id = int(order['consumable_id'])
-                    if consumable_id not in orders_dict:
-                        orders_dict[consumable_id] = []
-                    orders_dict[consumable_id].append({
-                        '依頼日': order['依頼日'].strftime('%Y-%m-%d') if pd.notna(order['依頼日']) else None,
-                        '依頼者': str(order['依頼者']) if pd.notna(order['依頼者']) else None,
-                        '依頼数量': int(order['依頼数量']) if pd.notna(order['依頼数量']) else 0,
-                        '納期': str(order['納期']) if pd.notna(order['納期']) else None,
-                        '注文日': order['注文日'].strftime('%Y-%m-%d') if pd.notna(order['注文日']) else None
-                    })
+                # 商品ごとに注文情報をグループ化
+                orders_dict = {}
+                if not orders_df.empty:
+                    for _, order in orders_df.iterrows():
+                        consumable_id = int(order['consumable_id'])
+                        if consumable_id not in orders_dict:
+                            orders_dict[consumable_id] = []
+                        orders_dict[consumable_id].append({
+                            '依頼日': order['依頼日'].strftime('%Y-%m-%d') if pd.notna(order['依頼日']) else None,
+                            '依頼者': str(order['依頼者']) if pd.notna(order['依頼者']) else None,
+                            '依頼数量': int(order['依頼数量']) if pd.notna(order['依頼数量']) else 0,
+                            '納期': str(order['納期']) if pd.notna(order['納期']) else None,
+                            '注文日': order['注文日'].strftime('%Y-%m-%d') if pd.notna(order['注文日']) else None
+                        })
 
-            # データフレームに注文情報を追加
-            df['依頼中注文'] = df['id'].apply(lambda x: orders_dict.get(int(x), []))
+                # データフレームに注文情報を追加
+                df['依頼中注文'] = df['id'].apply(lambda x: orders_dict.get(int(x), []))
+            except Exception as e:
+                print(f"Error fetching pending orders: {e}")
+                # エラーが発生しても、空の配列を設定
+                df['依頼中注文'] = [[] for _ in range(len(df))]
+        else:
+            # データフレームが空の場合も、カラムを追加
+            df['依頼中注文'] = []
 
         # JSON形式で返す
         return jsonify(
