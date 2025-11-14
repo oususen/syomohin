@@ -152,23 +152,49 @@ class PurchaseOrderGenerator:
 
         # データ行を作成
         table_data = [headers]
+        total_quantity = 0
+        total_amount = 0
+
         for idx, item in enumerate(items, 1):
+            quantity = item.get('quantity', 0)
+            amount = item.get('total_amount', 0)
+            total_quantity += quantity
+            total_amount += amount
+
             row = [
                 str(idx),
                 item.get('order_code', ''),  # 発注コードを使用
                 item.get('name', ''),
-                str(item.get('quantity', '')),
+                str(quantity),
                 item.get('unit', ''),
                 f"{int(item.get('unit_price', 0)):,}" if item.get('unit_price') else '',
-                f"{int(item.get('total_amount', 0)):,}" if item.get('total_amount') else '',
+                f"{int(amount):,}" if amount else '',
                 item.get('deadline', ''),
                 '',  # 裏議書No
                 item.get('note', '') or '-'
             ]
             table_data.append(row)
 
+        # 合計行を追加
+        total_row = [
+            '',
+            '',
+            '合計',
+            str(total_quantity),
+            '',
+            '',
+            f"{int(total_amount):,}",
+            '',
+            '',
+            ''
+        ]
+        table_data.append(total_row)
+
         # カラム幅（合計178mm、A4幅に収まるように調整）
         col_widths = [10 * mm, 18 * mm, 45 * mm, 12 * mm, 12 * mm, 18 * mm, 18 * mm, 15 * mm, 15 * mm, 15 * mm]
+
+        # 最後の行番号（合計行）
+        last_row = len(table_data) - 1
 
         table = Table(table_data, colWidths=col_widths, repeatRows=1)
         table.setStyle(TableStyle([
@@ -186,6 +212,11 @@ class PurchaseOrderGenerator:
             ('TOPPADDING', (0, 0), (-1, -1), 3),
             ('WORDWRAP', (2, 0), (2, -1), True),  # 商品名の自動折り返し
             ('WORDWRAP', (9, 0), (9, -1), True),  # 備考の自動折り返し
+            # 合計行のスタイル
+            ('SPAN', (0, last_row), (2, last_row)),  # 最初の3列を結合
+            ('ALIGN', (0, last_row), (2, last_row), 'CENTER'),  # 合計テキスト中央揃え
+            ('BACKGROUND', (0, last_row), (-1, last_row), colors.lightgrey),  # 合計行背景色
+            ('FONT', (0, last_row), (-1, last_row), self.font_name, 8),  # 合計行フォントサイズ
         ]))
 
         # テーブルの高さを計算して配置
