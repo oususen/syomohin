@@ -103,10 +103,7 @@ function setupEventListeners() {
     });
     document.getElementById('inboundSearchText').addEventListener('input', debounce(() => window.searchItemByName('inbound'), 300));
     document.getElementById('inboundEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('inbound'), 300));
-    document.getElementById('submitInbound').addEventListener('click', () => {
-        console.log('submitInbound button clicked');
-        window.submitInbound();
-    });
+    document.getElementById('submitInbound').addEventListener('click', () => window.submitInbound());
 
     ['editStockQty', 'editSafetyStock'].forEach(id => {
         const input = document.getElementById(id);
