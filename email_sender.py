@@ -12,14 +12,33 @@ import os
 class EmailSender:
     """メール送信クラス"""
 
-    def __init__(self):
-        # メール設定（環境変数または設定ファイルから取得）
-        self.smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
-        self.smtp_port = int(os.getenv('SMTP_PORT', '587'))
-        self.smtp_user = os.getenv('SMTP_USER', '')
-        self.smtp_password = os.getenv('SMTP_PASSWORD', '')
-        self.from_email = os.getenv('FROM_EMAIL', self.smtp_user)
-        self.from_name = os.getenv('FROM_NAME', 'ダイソウ工業株式会社')
+    def __init__(self, user_email_config=None):
+        """
+        Args:
+            user_email_config: ユーザーのメール設定（dict）
+                - smtp_host: SMTPサーバー
+                - smtp_port: SMTPポート
+                - smtp_user: SMTP認証ユーザー名
+                - smtp_password: SMTP認証パスワード
+                - from_email: 送信元メールアドレス
+                - from_name: 送信元名前
+        """
+        if user_email_config:
+            # ユーザー設定を使用
+            self.smtp_host = user_email_config.get('smtp_host', 'smtp.gmail.com')
+            self.smtp_port = int(user_email_config.get('smtp_port', 587))
+            self.smtp_user = user_email_config.get('smtp_user', '')
+            self.smtp_password = user_email_config.get('smtp_password', '')
+            self.from_email = user_email_config.get('from_email', self.smtp_user)
+            self.from_name = user_email_config.get('from_name', 'ダイソウ工業株式会社')
+        else:
+            # 環境変数から取得（後方互換性のため）
+            self.smtp_host = os.getenv('SMTP_HOST', 'smtp.gmail.com')
+            self.smtp_port = int(os.getenv('SMTP_PORT', '587'))
+            self.smtp_user = os.getenv('SMTP_USER', '')
+            self.smtp_password = os.getenv('SMTP_PASSWORD', '')
+            self.from_email = os.getenv('FROM_EMAIL', self.smtp_user)
+            self.from_name = os.getenv('FROM_NAME', 'ダイソウ工業株式会社')
 
     def send_purchase_order(self, to_email: str, order_number: str, supplier_name: str, pdf_path: str, contact_person: str = ''):
         """
@@ -103,7 +122,7 @@ class EmailSender:
         return body.strip()
 
 
-def send_purchase_order_email(to_email: str, order_number: str, supplier_name: str, pdf_path: str, contact_person: str = ''):
+def send_purchase_order_email(to_email: str, order_number: str, supplier_name: str, pdf_path: str, contact_person: str = '', user_email_config=None):
     """
     注文書PDFをメールで送信するヘルパー関数
 
@@ -113,9 +132,10 @@ def send_purchase_order_email(to_email: str, order_number: str, supplier_name: s
         supplier_name: 購入先名
         pdf_path: PDFファイルパス
         contact_person: 担当者名
+        user_email_config: ユーザーのメール設定（dict）
 
     Returns:
         bool: 送信成功の場合True
     """
-    sender = EmailSender()
+    sender = EmailSender(user_email_config)
     return sender.send_purchase_order(to_email, order_number, supplier_name, pdf_path, contact_person)

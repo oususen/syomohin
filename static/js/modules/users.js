@@ -141,6 +141,10 @@ async function createUser() {
     const password = document.getElementById('userPassword').value;
     const isActive = document.getElementById('userActive').value === 'active';
     const roleIds = getSelectedRoleIds('userRolesCheckboxes');
+    const smtpHost = document.getElementById('userSmtpHost').value.trim();
+    const smtpPortValue = document.getElementById('userSmtpPort').value.trim();
+    const smtpUser = document.getElementById('userSmtpUser').value.trim();
+    const smtpPassword = document.getElementById('userSmtpPassword').value.trim();
 
     if (!username || !fullName || !password) {
         showError('ユーザー名、氏名、パスワードは必須です');
@@ -150,6 +154,16 @@ async function createUser() {
     if (password.length < 6) {
         showError('パスワードは6文字以上で入力してください');
         return;
+    }
+
+    let smtpPort = null;
+    if (smtpPortValue) {
+        const parsedPort = parseInt(smtpPortValue, 10);
+        if (Number.isNaN(parsedPort) || parsedPort <= 0) {
+            showError('SMTPポートは正の整数で入力してください');
+            return;
+        }
+        smtpPort = parsedPort;
     }
 
     try {
@@ -162,7 +176,11 @@ async function createUser() {
                 email,
                 password,
                 is_active: isActive,
-                role_ids: roleIds
+                role_ids: roleIds,
+                smtp_host: smtpHost || null,
+                smtp_port: smtpPort,
+                smtp_user: smtpUser || null,
+                smtp_password: smtpPassword || null
             })
         });
 
@@ -175,6 +193,10 @@ async function createUser() {
             document.getElementById('userFullName').value = '';
             document.getElementById('userEmail').value = '';
             document.getElementById('userPassword').value = '';
+            document.getElementById('userSmtpHost').value = '';
+            document.getElementById('userSmtpPort').value = '';
+            document.getElementById('userSmtpUser').value = '';
+            document.getElementById('userSmtpPassword').value = '';
             renderRoleCheckboxes('userRolesCheckboxes', []);
             // 一覧を再読み込み
             await loadUsersList();
@@ -204,6 +226,11 @@ async function editUser(userId) {
             document.getElementById('editUserEmail').value = user.email || '';
             document.getElementById('editUserPassword').value = '';
             document.getElementById('editUserActive').value = user.is_active ? 'active' : 'inactive';
+            document.getElementById('editUserSmtpHost').value = user.smtp_host || '';
+            document.getElementById('editUserSmtpPort').value =
+                user.smtp_port !== null && user.smtp_port !== undefined ? user.smtp_port : '';
+            document.getElementById('editUserSmtpUser').value = user.smtp_user || '';
+            document.getElementById('editUserSmtpPassword').value = user.smtp_password || '';
 
             // ロールのチェックボックスを設定
             const roleIds = user.roles ? user.roles.map(r => r.id) : [];
@@ -232,6 +259,10 @@ async function updateUser() {
     const password = document.getElementById('editUserPassword').value;
     const isActive = document.getElementById('editUserActive').value === 'active';
     const roleIds = getSelectedRoleIds('editUserRolesCheckboxes');
+    const smtpHost = document.getElementById('editUserSmtpHost').value.trim();
+    const smtpPortValue = document.getElementById('editUserSmtpPort').value.trim();
+    const smtpUser = document.getElementById('editUserSmtpUser').value.trim();
+    const smtpPassword = document.getElementById('editUserSmtpPassword').value.trim();
 
     if (!username || !fullName) {
         showError('ユーザー名と氏名は必須です');
@@ -243,13 +274,27 @@ async function updateUser() {
         return;
     }
 
+    let smtpPort = null;
+    if (smtpPortValue) {
+        const parsedPort = parseInt(smtpPortValue, 10);
+        if (Number.isNaN(parsedPort) || parsedPort <= 0) {
+            showError('SMTPポートは正の整数で入力してください');
+            return;
+        }
+        smtpPort = parsedPort;
+    }
+
     try {
         const body = {
             username,
             full_name: fullName,
             email,
             is_active: isActive,
-            role_ids: roleIds
+            role_ids: roleIds,
+            smtp_host: smtpHost || null,
+            smtp_port: smtpPort,
+            smtp_user: smtpUser || null,
+            smtp_password: smtpPassword || null
         };
 
         // パスワードが入力されている場合のみ含める
