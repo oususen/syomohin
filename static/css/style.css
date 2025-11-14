@@ -1028,3 +1028,41 @@ body {
     cursor: not-allowed;
     pointer-events: none;
 }
+
+/* 注文依頼詳細セクション */
+.order-details-section {
+    margin-top: 12px;
+    padding: 12px;
+    background-color: #e3f2fd;
+    border-left: 4px solid #2196f3;
+    border-radius: 4px;
+}
+
+.order-details-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: #1976d2;
+    margin-bottom: 8px;
+}
+
+.order-detail-item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    padding: 6px 0;
+    font-size: 12px;
+    border-bottom: 1px solid #bbdefb;
+}
+
+.order-detail-item:last-child {
+    border-bottom: none;
+}
+
+.order-detail-item span {
+    color: #555;
+}
+
+.order-detail-item strong {
+    color: #1976d2;
+    font-weight: 600;
+}

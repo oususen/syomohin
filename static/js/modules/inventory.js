@@ -102,6 +102,24 @@ function renderInventory(items) {
         const safeNameAttr = escapeAttr(name);
         const safeUnitAttr = escapeAttr(unit);
         const safeSupplierAttr = escapeAttr(supplier);
+        const pendingOrders = item['依頼中注文'] || [];
+
+        // 依頼中注文の詳細HTML
+        let pendingOrdersHtml = '';
+        if (orderStatus === '依頼中' && pendingOrders.length > 0) {
+            pendingOrdersHtml = `
+                <div class="order-details-section">
+                    <div class="order-details-title">📋 注文依頼詳細</div>
+                    ${pendingOrders.map(order => `
+                        <div class="order-detail-item">
+                            <span>依頼日: ${order['依頼日'] || '-'}</span>
+                            <span>依頼者: ${order['依頼者'] || '-'}</span>
+                            <span>依頼数量: <strong>${order['依頼数量'] || 0}</strong> ${unit}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
 
         return `
             <div class="inventory-card">
@@ -134,6 +152,7 @@ function renderInventory(items) {
                             <span class="status-pill ${shortageClass}">欠品状態: ${shortageStatus}</span>
                             <span class="status-pill ${orderClass}">注文状態: ${orderStatus}</span>
                         </div>
+                        ${pendingOrdersHtml}
                     </div>
                     <div class="card-actions">
                         <button
