@@ -103,7 +103,25 @@ function setupEventListeners() {
     });
     document.getElementById('inboundSearchText').addEventListener('input', debounce(() => window.searchItemByName('inbound'), 300));
     document.getElementById('inboundEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('inbound'), 300));
-    document.getElementById('submitInbound').addEventListener('click', () => window.submitInbound());
+
+    const submitInboundBtn = document.getElementById('submitInbound');
+    console.log('submitInbound button:', submitInboundBtn);
+    if (submitInboundBtn) {
+        submitInboundBtn.addEventListener('click', (e) => {
+            console.log('入庫ボタンがクリックされました');
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof window.submitInbound === 'function') {
+                console.log('submitInbound関数を呼び出します');
+                window.submitInbound();
+            } else {
+                console.error('submitInbound関数が見つかりません');
+            }
+        });
+        console.log('submitInboundイベントリスナーを登録しました');
+    } else {
+        console.error('submitInboundボタンが見つかりません');
+    }
 
     ['editStockQty', 'editSafetyStock'].forEach(id => {
         const input = document.getElementById(id);

@@ -304,21 +304,34 @@ async function submitOutbound() {
 
 // 入庫を送信
 async function submitInbound() {
-    const code = document.getElementById('inboundItemInfo').dataset.itemCode;
+    console.log('=== submitInbound関数が呼び出されました ===');
+
+    const inboundItemInfo = document.getElementById('inboundItemInfo');
+    console.log('inboundItemInfo element:', inboundItemInfo);
+
+    const code = inboundItemInfo ? inboundItemInfo.dataset.itemCode : null;
+    console.log('商品コード:', code);
+
     const quantity = parseInt(document.getElementById('inboundQuantity').value);
     const person = document.getElementById('inboundPerson').value.trim();
     const department = document.getElementById('inboundDepartment').value.trim();
     const note = document.getElementById('inboundNote').value.trim();
 
+    console.log('入庫データ:', { code, quantity, person, department, note });
+
     if (!quantity || quantity <= 0) {
+        console.log('入庫数量エラー');
         showError('入庫数量を入力してください');
         return;
     }
 
     if (!person) {
+        console.log('入庫者名エラー');
         showError('入庫者名を入力してください');
         return;
     }
+
+    console.log('バリデーションOK、API呼び出しを開始します');
 
     try {
         const response = await fetch('/api/inbound', {
