@@ -1066,3 +1066,17 @@ body {
     color: #1976d2;
     font-weight: 600;
 }
+
+/* 発注済み注文詳細セクション */
+.completed-order-section {
+    background-color: #e8f5e9;
+    border-left: 4px solid #4caf50;
+}
+
+.completed-order-section .order-details-title {
+    color: #2e7d32;
+}
+
+.completed-order-section .order-detail-item strong {
+    color: #2e7d32;
+}

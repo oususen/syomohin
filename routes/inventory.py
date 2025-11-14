@@ -137,9 +137,46 @@ def get_inventory():
                 print(f"Error fetching pending orders: {e}")
                 # エラーが発生しても、空の配列を設定
                 df['依頼中注文'] = [[] for _ in range(len(df))]
+
+            # 発注済みの注文情報も取得
+            try:
+                completed_orders_query = f"""
+                    SELECT
+                        o.consumable_id,
+                        o.ordered_date AS 注文日,
+                        o.quantity AS 注文数量,
+                        o.deadline AS 納期
+                    FROM orders o
+                    WHERE o.consumable_id IN ({placeholders})
+                    AND o.status = '発注済'
+                    ORDER BY o.ordered_date DESC
+                """
+
+                completed_orders_df = db.execute_query(completed_orders_query, order_params)
+
+                # 商品ごとに発注情報をグループ化
+                completed_orders_dict = {}
+                if not completed_orders_df.empty:
+                    for _, order in completed_orders_df.iterrows():
+                        consumable_id = int(order['consumable_id'])
+                        if consumable_id not in completed_orders_dict:
+                            completed_orders_dict[consumable_id] = []
+                        completed_orders_dict[consumable_id].append({
+                            '注文日': order['注文日'].strftime('%Y-%m-%d') if pd.notna(order['注文日']) else None,
+                            '注文数量': int(order['注文数量']) if pd.notna(order['注文数量']) else 0,
+                            '納期': str(order['納期']) if pd.notna(order['納期']) else None
+                        })
+
+                # データフレームに発注情報を追加
+                df['発注済み注文'] = df['id'].apply(lambda x: completed_orders_dict.get(int(x), []))
+            except Exception as e:
+                print(f"Error fetching completed orders: {e}")
+                # エラーが発生しても、空の配列を設定
+                df['発注済み注文'] = [[] for _ in range(len(df))]
         else:
             # データフレームが空の場合も、カラムを追加
             df['依頼中注文'] = []
+            df['発注済み注文'] = []
 
         # JSON形式で返す
         return jsonify(

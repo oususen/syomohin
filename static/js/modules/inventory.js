@@ -103,6 +103,7 @@ function renderInventory(items) {
         const safeUnitAttr = escapeAttr(unit);
         const safeSupplierAttr = escapeAttr(supplier);
         const pendingOrders = item['依頼中注文'] || [];
+        const completedOrders = item['発注済み注文'] || [];
 
         // 依頼中注文の詳細HTML
         let pendingOrdersHtml = '';
@@ -115,6 +116,23 @@ function renderInventory(items) {
                             <span>依頼日: ${order['依頼日'] || '-'}</span>
                             <span>依頼者: ${order['依頼者'] || '-'}</span>
                             <span>依頼数量: <strong>${order['依頼数量'] || 0}</strong> ${unit}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        // 発注済み注文の詳細HTML
+        let completedOrdersHtml = '';
+        if (orderStatus === '発注済み' && completedOrders.length > 0) {
+            completedOrdersHtml = `
+                <div class="order-details-section completed-order-section">
+                    <div class="order-details-title">📦 発注詳細</div>
+                    ${completedOrders.map(order => `
+                        <div class="order-detail-item">
+                            <span>注文日: ${order['注文日'] || '-'}</span>
+                            <span>注文数量: <strong>${order['注文数量'] || 0}</strong> ${unit}</span>
+                            <span>納期: ${order['納期'] || '-'}</span>
                         </div>
                     `).join('')}
                 </div>
@@ -153,6 +171,7 @@ function renderInventory(items) {
                             <span class="status-pill ${orderClass}">注文状態: ${orderStatus}</span>
                         </div>
                         ${pendingOrdersHtml}
+                        ${completedOrdersHtml}
                     </div>
                     <div class="card-actions">
                         <button
