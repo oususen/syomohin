@@ -73,18 +73,18 @@ function setupEventListeners() {
     });
     document.getElementById('scanQrBtn').addEventListener('click', () => {
         currentQrTarget = 'qrCodeInput';
-        openCamera();
+        window.openCamera();
     });
 
     // 出庫ページ
-    document.getElementById('outboundQrCode').addEventListener('input', () => loadItemInfo('outbound'));
+    document.getElementById('outboundQrCode').addEventListener('input', () => window.loadItemInfo('outbound'));
     document.getElementById('outboundScanBtn').addEventListener('click', () => {
         currentQrTarget = 'outboundQrCode';
-        openCamera();
+        window.openCamera();
     });
-    document.getElementById('outboundSearchText').addEventListener('input', debounce(() => searchItemByName('outbound'), 300));
-    document.getElementById('outboundEmployeeCode').addEventListener('input', debounce(() => loadEmployeeByCode('outbound'), 300));
-    document.getElementById('submitOutbound').addEventListener('click', submitOutbound);
+    document.getElementById('outboundSearchText').addEventListener('input', debounce(() => window.searchItemByName('outbound'), 300));
+    document.getElementById('outboundEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('outbound'), 300));
+    document.getElementById('submitOutbound').addEventListener('click', () => window.submitOutbound());
 
     // 入庫ページ
     document.getElementById('showManualInbound').addEventListener('click', () => {
@@ -94,16 +94,19 @@ function setupEventListeners() {
     document.getElementById('showAutoInbound').addEventListener('click', () => {
         document.getElementById('manualInboundForm').style.display = 'none';
         document.getElementById('autoInboundList').style.display = 'block';
-        loadPendingOrders();
+        window.loadPendingOrders();
     });
-    document.getElementById('inboundQrCode').addEventListener('input', () => loadItemInfo('inbound'));
+    document.getElementById('inboundQrCode').addEventListener('input', () => window.loadItemInfo('inbound'));
     document.getElementById('inboundScanBtn').addEventListener('click', () => {
         currentQrTarget = 'inboundQrCode';
-        openCamera();
+        window.openCamera();
     });
-    document.getElementById('inboundSearchText').addEventListener('input', debounce(() => searchItemByName('inbound'), 300));
-    document.getElementById('inboundEmployeeCode').addEventListener('input', debounce(() => loadEmployeeByCode('inbound'), 300));
-    document.getElementById('submitInbound').addEventListener('click', submitInbound);
+    document.getElementById('inboundSearchText').addEventListener('input', debounce(() => window.searchItemByName('inbound'), 300));
+    document.getElementById('inboundEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('inbound'), 300));
+    document.getElementById('submitInbound').addEventListener('click', () => {
+        console.log('submitInbound button clicked');
+        window.submitInbound();
+    });
 
     ['editStockQty', 'editSafetyStock'].forEach(id => {
         const input = document.getElementById(id);
@@ -113,19 +116,19 @@ function setupEventListeners() {
     });
 
     // 注文依頼ページ
-    document.getElementById('orderQrCode').addEventListener('input', () => loadItemInfo('order'));
+    document.getElementById('orderQrCode').addEventListener('input', () => window.loadItemInfo('order'));
     document.getElementById('orderScanBtn').addEventListener('click', () => {
         currentQrTarget = 'orderQrCode';
-        openCamera();
+        window.openCamera();
     });
-    document.getElementById('orderEmployeeCode').addEventListener('input', debounce(() => loadEmployeeByCode('order'), 300));
-    document.getElementById('submitOrder').addEventListener('click', submitOrder);
+    document.getElementById('orderEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('order'), 300));
+    document.getElementById('submitOrder').addEventListener('click', () => window.submitOrder());
 
     // 発注状態リストページ
     document.getElementById('showManualOrders').addEventListener('click', () => {
         document.getElementById('manualOrdersList').style.display = 'block';
         document.getElementById('autoOrdersList').style.display = 'none';
-        loadManualOrders();
+        window.loadManualOrders();
     });
     document.getElementById('showAutoOrders').addEventListener('click', () => {
         document.getElementById('manualOrdersList').style.display = 'none';
@@ -134,11 +137,11 @@ function setupEventListeners() {
     });
 
     // カメラモーダル
-    document.getElementById('closeModal').addEventListener('click', closeCamera);
-    document.getElementById('captureBtn').addEventListener('click', capturePhoto);
+    document.getElementById('closeModal').addEventListener('click', () => window.closeCamera());
+    document.getElementById('captureBtn').addEventListener('click', () => window.capturePhoto());
     document.getElementById('cameraModal').addEventListener('click', (e) => {
         if (e.target.id === 'cameraModal') {
-            closeCamera();
+            window.closeCamera();
         }
     });
 

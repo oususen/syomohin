@@ -304,11 +304,13 @@ async function submitOutbound() {
 
 // 入庫を送信
 async function submitInbound() {
+    console.log('submitInbound called');
     const code = document.getElementById('inboundItemInfo').dataset.itemCode;
     const quantity = parseInt(document.getElementById('inboundQuantity').value);
     const person = document.getElementById('inboundPerson').value.trim();
     const department = document.getElementById('inboundDepartment').value.trim();
     const note = document.getElementById('inboundNote').value.trim();
+    console.log('入庫データ:', { code, quantity, person, department, note });
 
     if (!quantity || quantity <= 0) {
         showError('入庫数量を入力してください');
