@@ -806,6 +806,37 @@ def send_dispatch_order(order_id: int):
             }
         )
 
+        # 注文書に含まれる商品の注文状態を「発注済み」に更新
+        db.execute_update(
+            """
+            UPDATE consumables
+            SET order_status = '発注済み'
+            WHERE id IN (
+                SELECT DISTINCT consumable_id
+                FROM dispatch_order_items
+                WHERE dispatch_order_id = :order_id
+                AND consumable_id IS NOT NULL
+            )
+            """,
+            {"order_id": order_id}
+        )
+
+        # 対応するordersテーブルのレコードも「発注済」に更新
+        db.execute_update(
+            """
+            UPDATE orders
+            SET status = '発注済', ordered_date = :ordered_date
+            WHERE consumable_id IN (
+                SELECT DISTINCT consumable_id
+                FROM dispatch_order_items
+                WHERE dispatch_order_id = :order_id
+                AND consumable_id IS NOT NULL
+            )
+            AND status IN ('依頼中', '発注準備')
+            """,
+            {"order_id": order_id, "ordered_date": datetime.now()}
+        )
+
         return jsonify({
             "success": True,
             "message": f"注文書を {email} に送信しました"
