@@ -82,7 +82,7 @@ def update_order_status(order_id: int):
             {"status": new_status, "id": order_id}
         )
 
-        # 却下された場合、消耗品のorder_statusを「未発注」に更新
+        # 却下された場合、消耗品のorder_statusを「却下」に更新
         if new_status == "却下":
             # 注文のconsumable_idを取得
             order_df = db.execute_query(
@@ -93,23 +93,11 @@ def update_order_status(order_id: int):
             if not order_df.empty and order_df.iloc[0]['consumable_id'] is not None:
                 consumable_id = int(order_df.iloc[0]['consumable_id'])
 
-                # この商品に対して他に依頼中または発注準備の注文がないか確認
-                other_orders_df = db.execute_query(
-                    """
-                    SELECT COUNT(*) as count FROM orders
-                    WHERE consumable_id = :consumable_id
-                    AND id != :order_id
-                    AND status IN ('依頼中', '発注準備', '発注済')
-                    """,
-                    {"consumable_id": consumable_id, "order_id": order_id}
+                # 商品のorder_statusを「却下」に更新（他の注文の有無に関わらず）
+                db.execute_update(
+                    "UPDATE consumables SET order_status = '却下' WHERE id = :id",
+                    {"id": consumable_id}
                 )
-
-                # 他に有効な注文がなければ、消耗品のorder_statusを「未発注」に戻す
-                if not other_orders_df.empty and int(other_orders_df.iloc[0]['count']) == 0:
-                    db.execute_update(
-                        "UPDATE consumables SET order_status = '未発注' WHERE id = :id",
-                        {"id": consumable_id}
-                    )
 
         return jsonify({"success": True, "message": f"ステータスを「{new_status}」に更新しました"})
     except Exception as exc:
