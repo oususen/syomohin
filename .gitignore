@@ -52,3 +52,8 @@ encoding_check.txt
 .streamlit/cert.pem
 .streamlit/key.pem
 .claude/settings.local.json
+
+#excelファイル
+.csv
+.xslx
+
