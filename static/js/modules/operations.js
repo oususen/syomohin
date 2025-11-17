@@ -441,6 +441,10 @@ async function submitOrder() {
 // 発注待ち一覧を読み込み
 async function loadPendingOrders() {
     const container = document.getElementById('pendingOrdersList');
+    if (!container) {
+        console.warn('pendingOrdersList element is not available on this page.');
+        return;
+    }
     container.innerHTML = '<p class="loading">読み込み中...</p>';
 
     try {

@@ -51,3 +51,4 @@ encoding_check.txt
 # SSL certificates
 .streamlit/cert.pem
 .streamlit/key.pem
+.claude/settings.local.json
