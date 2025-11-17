@@ -2,6 +2,12 @@
 // 購入先管理機能
 // ========================================
 
+const SUPPLIER_CSV_TEMPLATE_SAMPLE = [
+    '\uFEFF購入先名,担当者,電話番号,メールアドレス,住所,備考',
+    '東京ラボサプライ株式会社,佐藤太郎,03-1234-5678,order@labmart.jp,東京都千代田区1-1-1 研究ビル5F,主要仕入先',
+    '関西テック卸,田中花子,06-9876-5432,info@kansaitech.co.jp,大阪府大阪市中央区2-2-2,月末締め',
+].join('\n');
+
 let currentSuppliersSubtab = 'list';
 let suppliersPageEventsBound = false;
 
@@ -22,6 +28,16 @@ function initSuppliersPage() {
         const cancelBtn = document.getElementById('supplierCancelEditBtn');
         if (cancelBtn) {
             cancelBtn.addEventListener('click', cancelEditSupplier);
+        }
+
+        const csvImportBtn = document.getElementById('suppliersCsvImportBtn');
+        if (csvImportBtn) {
+            csvImportBtn.addEventListener('click', importSuppliersCsv);
+        }
+
+        const csvTemplateBtn = document.getElementById('suppliersCsvTemplateBtn');
+        if (csvTemplateBtn) {
+            csvTemplateBtn.addEventListener('click', downloadSuppliersTemplate);
         }
 
         suppliersPageEventsBound = true;
@@ -100,7 +116,8 @@ function renderSuppliersList(suppliers) {
     container.innerHTML = suppliers.map((supplier) => {
         const id = supplier.id;
         const name = supplier.name || '-';
-        const contact = supplier.contact_person || '-';
+        const contactPerson = supplier.contact_person || '-';
+        const phone = supplier.phone || '-';
         const email = supplier.email || '-';
         const address = supplier.address || '-';
         const note = supplier.note || '-';
@@ -115,7 +132,8 @@ function renderSuppliersList(suppliers) {
                     </div>
                 </div>
                 <div style="display: grid; grid-template-columns: auto 1fr; gap: 8px 16px; font-size: 14px; color: #666;">
-                    <strong>連絡先:</strong><span>${contact}</span>
+                    <strong>担当者:</strong><span>${contactPerson}</span>
+                    <strong>電話:</strong><span>${phone}</span>
                     <strong>メール:</strong><span>${email}</span>
                     <strong>住所:</strong><span>${address}</span>
                     ${note !== '-' ? `<strong>備考:</strong><span>${note}</span>` : ''}
@@ -127,6 +145,7 @@ function renderSuppliersList(suppliers) {
 
 async function submitSupplierForm() {
     const name = document.getElementById('supplierName').value.trim();
+    const contactPerson = document.getElementById('supplierContactPerson').value.trim();
 
     if (!name) {
         showError('購入先名は必須です');
@@ -135,7 +154,8 @@ async function submitSupplierForm() {
 
     const data = {
         name: name,
-        contact_person: document.getElementById('supplierContact').value.trim(),
+        contact_person: contactPerson,
+        phone: document.getElementById('supplierPhone').value.trim(),
         email: document.getElementById('supplierEmail').value.trim(),
         address: document.getElementById('supplierAddress').value.trim(),
         note: document.getElementById('supplierNote').value.trim()
@@ -156,7 +176,8 @@ async function submitSupplierForm() {
             showSuccess('購入先を登録しました');
             // フォームをクリア
             document.getElementById('supplierName').value = '';
-            document.getElementById('supplierContact').value = '';
+            document.getElementById('supplierContactPerson').value = '';
+            document.getElementById('supplierPhone').value = '';
             document.getElementById('supplierEmail').value = '';
             document.getElementById('supplierAddress').value = '';
             document.getElementById('supplierNote').value = '';
@@ -187,7 +208,8 @@ async function editSupplier(id) {
         // フォームに値を設定
         document.getElementById('editSupplierId').value = supplier.id;
         document.getElementById('editSupplierName').value = supplier.name || '';
-        document.getElementById('editSupplierContact').value = supplier.contact_person || '';
+        document.getElementById('editSupplierContactPerson').value = supplier.contact_person || '';
+        document.getElementById('editSupplierPhone').value = supplier.phone || '';
         document.getElementById('editSupplierEmail').value = supplier.email || '';
         document.getElementById('editSupplierAddress').value = supplier.address || '';
         document.getElementById('editSupplierNote').value = supplier.note || '';
@@ -215,7 +237,8 @@ async function updateSupplier() {
 
     const data = {
         name: name,
-        contact_person: document.getElementById('editSupplierContact').value.trim(),
+        contact_person: document.getElementById('editSupplierContactPerson').value.trim(),
+        phone: document.getElementById('editSupplierPhone').value.trim(),
         email: document.getElementById('editSupplierEmail').value.trim(),
         address: document.getElementById('editSupplierAddress').value.trim(),
         note: document.getElementById('editSupplierNote').value.trim()
@@ -281,6 +304,100 @@ async function deleteSupplier(id, name) {
     } catch (error) {
         console.error('supplier delete error:', error);
         showError('削除に失敗しました');
+    }
+}
+
+function triggerSuppliersFileDownload(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
+async function downloadSuppliersTemplate() {
+    const filename = 'suppliers_template.csv';
+    try {
+        const response = await fetch('/download/suppliers-template');
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        const blob = await response.blob();
+        triggerSuppliersFileDownload(blob, filename);
+        showSuccess('テンプレートをダウンロードしました');
+    } catch (error) {
+        console.warn('テンプレートの取得に失敗したためサンプルを生成します:', error);
+        const blob = new Blob([SUPPLIER_CSV_TEMPLATE_SAMPLE], { type: 'text/csv;charset=utf-8;' });
+        triggerSuppliersFileDownload(blob, filename);
+        showSuccess('サーバーに接続できないため、サンプルテンプレートを生成しました');
+    }
+}
+
+async function importSuppliersCsv() {
+    const fileInput = document.getElementById('suppliersCsvFileInput');
+    const file = fileInput?.files?.[0];
+
+    if (!file) {
+        showError('CSVファイルを選択してください');
+        return;
+    }
+
+    const importBtn = document.getElementById('suppliersCsvImportBtn');
+    if (importBtn) {
+        importBtn.disabled = true;
+        importBtn.textContent = '読み込み中...';
+    }
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('/api/suppliers/import-csv', {
+            method: 'POST',
+            body: formData,
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            const summary = result.summary || {};
+            const inserted = summary.inserted ?? 0;
+            const skipped = summary.skipped ?? 0;
+            const errors = summary.errors || [];
+
+            let message = result.message || 'CSVを取り込みました';
+            message += `（追加: ${inserted}件`;
+            if (skipped > 0) {
+                message += ` / スキップ: ${skipped}件`;
+            }
+            message += '）';
+
+            if (errors.length > 0) {
+                const errorPreview = errors.slice(0, 3).join('\n');
+                message += `\n\nエラー:\n${errorPreview}`;
+                if (errors.length > 3) {
+                    message += `\n... 他 ${errors.length - 3} 件`;
+                }
+            }
+
+            showSuccess(message);
+            fileInput.value = '';
+            loadSuppliersList();
+            switchSuppliersSubtab('list');
+        } else {
+            showError(result.error || 'CSVの取り込みに失敗しました');
+        }
+    } catch (error) {
+        console.error('suppliers csv import error:', error);
+        showError('CSVの取り込みに失敗しました');
+    } finally {
+        if (importBtn) {
+            importBtn.disabled = false;
+            importBtn.textContent = 'CSVを読み込む';
+        }
     }
 }
 

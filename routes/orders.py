@@ -201,7 +201,6 @@ def get_order_detail(order_id):
                 o.requester_name,
                 o.supplier_id,
                 s.name AS supplier_name,
-                s.contact AS supplier_contact,
                 s.phone AS supplier_phone,
                 s.email AS supplier_email,
                 o.status,

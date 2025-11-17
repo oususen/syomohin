@@ -84,6 +84,23 @@ def download_consumables_template():
     return response
 
 
+@app.route("/download/suppliers-template")
+def download_suppliers_template():
+    """購入先CSVテンプレートをダウンロード"""
+    template_path = config.SAMPLES_FOLDER / config.SUPPLIERS_TEMPLATE_NAME
+    if not template_path.exists():
+        return jsonify({"success": False, "error": "テンプレートが見つかりません"}), 404
+
+    content = template_path.read_text(encoding="utf-8")
+    response = make_response(content.encode("utf-8-sig"))
+    response.headers["Content-Type"] = "text/csv; charset=utf-8"
+    response.headers[
+        "Content-Disposition"
+    ] = f"attachment; filename*=UTF-8''{config.SUPPLIERS_TEMPLATE_NAME}"
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
     """アップロードファイルを配信"""

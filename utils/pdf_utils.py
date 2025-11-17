@@ -36,7 +36,6 @@ def fetch_orders_for_pdf(db, order_ids: list[int]):
             o.note,
             o.supplier_id,
             s.name AS supplier_name,
-            s.contact AS supplier_contact,
             s.email AS supplier_email
         FROM orders o
         LEFT JOIN suppliers s ON o.supplier_id = s.id

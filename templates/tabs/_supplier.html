@@ -25,14 +25,23 @@
             <div class="form-container">
                 <h3 class="section-title">購入先情報の入力</h3>
 
+                <div class="info-card" style="background:#f6f8fa;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin-bottom:16px;">
+                    <p style="margin:0;">CSVテンプレートを使うと複数の購入先をまとめて追加できます。</p>
+                </div>
+
                 <div class="filter-group">
                     <label for="supplierName">購入先名 *</label>
                     <input type="text" id="supplierName" class="input-field" placeholder="例: 株式会社サンプル商事" required>
                 </div>
 
                 <div class="filter-group">
-                    <label for="supplierContact">連絡先</label>
-                    <input type="text" id="supplierContact" class="input-field" placeholder="担当者名・電話番号など">
+                    <label for="supplierContactPerson">担当者</label>
+                    <input type="text" id="supplierContactPerson" class="input-field" placeholder="例: 佐藤太郎">
+                </div>
+
+                <div class="filter-group">
+                    <label for="supplierPhone">電話番号</label>
+                    <input type="text" id="supplierPhone" class="input-field" placeholder="例: 03-1234-5678">
                 </div>
 
                 <div class="filter-group">
@@ -53,6 +62,17 @@
                 <button id="supplierSubmitBtn" class="btn btn-primary primary-action" type="button">
                     💾 購入先を登録する
                 </button>
+
+                <div class="import-section" style="margin-top: 28px;">
+                    <h3>CSVインポート</h3>
+                    <p class="import-note">テンプレートに沿って入力したCSVファイルを選ぶと、まとめて購入先を追加できます。</p>
+                    <input type="file" id="suppliersCsvFileInput" class="input-field file-input" accept=".csv">
+                    <div class="import-actions">
+                        <button id="suppliersCsvImportBtn" class="btn btn-outline" type="button">CSVを読み込む</button>
+                        <button id="suppliersCsvTemplateBtn" class="btn btn-outline" type="button">テンプレートをダウンロード</button>
+                    </div>
+                    <small class="import-hint">必須列: 購入先名。UTF-8 または Shift_JIS で保存できます。</small>
+                </div>
             </div>
         </div>
 
@@ -69,8 +89,13 @@
                 </div>
 
                 <div class="filter-group">
-                    <label for="editSupplierContact">連絡先</label>
-                    <input type="text" id="editSupplierContact" class="input-field" placeholder="担当者名・電話番号など">
+                    <label for="editSupplierContactPerson">担当者</label>
+                    <input type="text" id="editSupplierContactPerson" class="input-field" placeholder="例: 佐藤太郎">
+                </div>
+
+                <div class="filter-group">
+                    <label for="editSupplierPhone">電話番号</label>
+                    <input type="text" id="editSupplierPhone" class="input-field" placeholder="例: 03-1234-5678">
                 </div>
 
                 <div class="filter-group">

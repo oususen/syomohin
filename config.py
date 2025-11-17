@@ -19,6 +19,7 @@ ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
 ALLOWED_PDF_EXTENSIONS = {"pdf"}
 SAMPLES_FOLDER = BASE_DIR / "static" / "samples"
 CSV_TEMPLATE_NAME = "consumables_template.csv"
+SUPPLIERS_TEMPLATE_NAME = "suppliers_template.csv"
 
 # Flaskアプリ設定
 MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max

@@ -16,7 +16,6 @@ CREATE TABLE IF NOT EXISTS employees (
 CREATE TABLE IF NOT EXISTS suppliers (
     id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(255) NOT NULL COMMENT '名称',
-    contact VARCHAR(100) COMMENT '連絡先',
     contact_person VARCHAR(100) COMMENT '担当者',
     email VARCHAR(255) COMMENT 'メールアドレス',
     phone VARCHAR(20) COMMENT '電話番号',
