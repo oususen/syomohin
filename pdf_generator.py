@@ -122,10 +122,44 @@ class PurchaseOrderGenerator:
         else:
             created_date = datetime.now().strftime("%Y/%m/%d")
 
+        # 確認者と確認日を取得
+        reviewed_by = order_data.get('reviewed_by_name', '')
+        reviewed_at = order_data.get('reviewed_at')
+        if reviewed_at:
+            if hasattr(reviewed_at, 'strftime'):
+                reviewed_date = reviewed_at.strftime("%Y/%m/%d")
+            else:
+                try:
+                    from datetime import datetime as dt
+                    reviewed_date = dt.fromisoformat(str(reviewed_at)).strftime("%Y/%m/%d")
+                except:
+                    reviewed_date = str(reviewed_at)[:10]
+        else:
+            reviewed_date = ''
+
+        # 承認者と承認日を取得
+        approved_by = order_data.get('approved_by_name', '')
+        approved_at = order_data.get('approved_at')
+        if approved_at:
+            if hasattr(approved_at, 'strftime'):
+                approved_date = approved_at.strftime("%Y/%m/%d")
+            else:
+                try:
+                    from datetime import datetime as dt
+                    approved_date = dt.fromisoformat(str(approved_at)).strftime("%Y/%m/%d")
+                except:
+                    approved_date = str(approved_at)[:10]
+        else:
+            approved_date = ''
+
         # 承認欄のテーブル（2行に変更）
         approval_data = [
             ['承認', '確認', '作成'],
-            ['', '', f'{created_by}\n{created_date}']
+            [
+                f'{approved_by}\n{approved_date}' if approved_by else '',
+                f'{reviewed_by}\n{reviewed_date}' if reviewed_by else '',
+                f'{created_by}\n{created_date}'
+            ]
         ]
 
         col_width = 22 * mm

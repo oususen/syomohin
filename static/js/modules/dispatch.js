@@ -14,6 +14,10 @@ function initDispatchPage() {
 // 1. 依頼管理機能
 // ========================================
 
+// 依頼データを保存するグローバル変数
+let allPendingOrders = [];
+let currentStatusFilter = 'all';
+
 async function loadPendingOrders() {
     try {
         const response = await fetch('/api/orders/pending');
@@ -24,10 +28,37 @@ async function loadPendingOrders() {
 
         if (!data.success || !data.data || data.data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: #999;">依頼がありません</td></tr>';
+            allPendingOrders = [];
             return;
         }
 
-        tbody.innerHTML = data.data.map(order => `
+        // データを保存
+        allPendingOrders = data.data;
+
+        // 現在のフィルタを適用して表示
+        displayFilteredOrders();
+    } catch (error) {
+        console.error('Error loading pending orders:', error);
+        showError('依頼の読み込みに失敗しました');
+    }
+}
+
+function displayFilteredOrders() {
+    const tbody = document.getElementById('pendingOrdersTableBody');
+    if (!tbody) return;
+
+    // フィルタリング
+    let filteredOrders = allPendingOrders;
+    if (currentStatusFilter !== 'all') {
+        filteredOrders = allPendingOrders.filter(order => order.status === currentStatusFilter);
+    }
+
+    if (filteredOrders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: #999;">該当する依頼がありません</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filteredOrders.map(order => `
             <tr>
                 <td>${order.id}</td>
                 <td>${order.code || '-'}</td>
@@ -60,9 +91,41 @@ async function loadPendingOrders() {
                 </td>
             </tr>
         `).join('');
-    } catch (error) {
-        console.error('Error loading pending orders:', error);
-        showError('依頼の読み込みに失敗しました');
+}
+
+function filterPendingOrders(status) {
+    currentStatusFilter = status;
+
+    // ボタンのactive状態を更新
+    const filterButtons = document.querySelectorAll('#dispatchRequestsPage [data-filter]');
+    filterButtons.forEach(btn => {
+        if (btn.dataset.filter === status) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    const statusSelect = document.getElementById('requestOrderStatusFilter');
+    if (statusSelect && statusSelect.value !== status) {
+        statusSelect.value = status;
+    }
+
+    // フィルタを適用して表示
+    displayFilteredOrders();
+}
+
+function setupRequestOrderStatusFilter() {
+    const statusSelect = document.getElementById('requestOrderStatusFilter');
+    if (!statusSelect) return;
+
+    statusSelect.value = currentStatusFilter;
+
+    if (!statusSelect.dataset.listenerAttached) {
+        statusSelect.addEventListener('change', (event) => {
+            filterPendingOrders(event.target.value);
+        });
+        statusSelect.dataset.listenerAttached = 'true';
     }
 }
 
@@ -540,9 +603,11 @@ async function loadDispatchOrders() {
         if (!tbody) return;
 
         if (!data.success || !data.data || data.data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" style="text-align: center; color: #999;">注文書がありません</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="11" style="text-align: center; color: #999;">注文書がありません</td></tr>';
             return;
         }
+
+        const permissions = data.permissions || { can_review: false, can_approve: false };
 
         tbody.innerHTML = data.data.map(order => `
             <tr>
@@ -555,6 +620,16 @@ async function loadDispatchOrders() {
                         ${order.status}
                     </span>
                 </td>
+                <td>
+                    ${order.reviewed_by_name ?
+                        `✅ ${order.reviewed_by_name}<br><small>${order.reviewed_at ? new Date(order.reviewed_at).toLocaleString('ja-JP') : ''}</small>`
+                        : (permissions.can_review ? '<button class="btn-small btn-secondary" onclick="reviewDispatchOrder(' + order.id + ')" title="確認">確認</button>' : '-')}
+                </td>
+                <td>
+                    ${order.approved_by_name ?
+                        `✅ ${order.approved_by_name}<br><small>${order.approved_at ? new Date(order.approved_at).toLocaleString('ja-JP') : ''}</small>`
+                        : (permissions.can_approve && order.reviewed_by_name ? '<button class="btn-small btn-secondary" onclick="approveDispatchOrder(' + order.id + ')" title="承認">承認</button>' : '-')}
+                </td>
                 <td>${order.created_by || '-'}</td>
                 <td>${order.created_at ? new Date(order.created_at).toLocaleString('ja-JP') : '-'}</td>
                 <td>${order.sent_at ? new Date(order.sent_at).toLocaleString('ja-JP') : '-'}</td>
@@ -565,7 +640,7 @@ async function loadDispatchOrders() {
                     <button class="btn-small btn-primary" onclick="downloadPurchaseOrderPDF(${order.id}, '${order.order_number}')" title="PDFダウンロード">
                         📄
                     </button>
-                    ${order.status === '未送信' ? `
+                    ${order.status === '未送信' && order.approved_by_name ? `
                         <button class="btn-small btn-primary" onclick="showSendOrderModal(${order.id}, '${order.supplier_name}', '${order.supplier_email || ''}')" title="送信">
                             📧
                         </button>
@@ -714,6 +789,7 @@ async function showSendOrderModal(orderId, supplierName, supplierEmail) {
 // ========================================
 
 function initDispatchRequestsPage() {
+    setupRequestOrderStatusFilter();
     loadPendingOrders();
 }
 
@@ -793,5 +869,171 @@ async function deleteDispatchOrder(orderId, orderNumber) {
     }
 }
 
+// 注文書を確認
+async function reviewDispatchOrder(orderId) {
+    if (!confirm('この注文書を確認済みにしますか？')) return;
+
+    try {
+        const response = await fetch(`/api/dispatch/orders/${orderId}/review`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSuccess(data.message);
+            loadDispatchOrders();
+        } else {
+            showError(data.error || '確認処理に失敗しました');
+        }
+    } catch (error) {
+        console.error('Error reviewing order:', error);
+        showError('確認処理に失敗しました');
+    }
+}
+
+// 注文書を承認
+async function approveDispatchOrder(orderId) {
+    if (!confirm('この注文書を承認しますか？')) return;
+
+    try {
+        const response = await fetch(`/api/dispatch/orders/${orderId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+            showSuccess(data.message);
+            loadDispatchOrders();
+        } else {
+            showError(data.error || '承認処理に失敗しました');
+        }
+    } catch (error) {
+        console.error('Error approving order:', error);
+        showError('承認処理に失敗しました');
+    }
+}
+
+// 確認待ちの注文書を読み込み
+async function loadReviewOrders() {
+    try {
+        const response = await fetch('/api/dispatch/orders');
+        const data = await response.json();
+
+        const tbody = document.getElementById('reviewOrdersTableBody');
+        if (!tbody) return;
+
+        if (!data.success || !data.data || data.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #999;">注文書がありません</td></tr>';
+            return;
+        }
+
+        // 未確認の注文書のみをフィルタ
+        const unreviewedOrders = data.data.filter(order => !order.reviewed_by_name);
+
+        if (unreviewedOrders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #999;">確認待ちの注文書がありません</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = unreviewedOrders.map(order => `
+            <tr>
+                <td><strong>${order.order_number}</strong></td>
+                <td>${order.supplier_name || '-'}</td>
+                <td>${order.total_items || 0}件</td>
+                <td>¥${(order.total_amount || 0).toLocaleString()}</td>
+                <td>
+                    <span class="status-badge status-${order.status === '未送信' ? 'pending' : 'sent'}">
+                        ${order.status}
+                    </span>
+                </td>
+                <td>${order.created_by || '-'}</td>
+                <td>${order.created_at ? new Date(order.created_at).toLocaleString('ja-JP') : '-'}</td>
+                <td>
+                    <button class="btn-small btn-edit" onclick="showDispatchOrderDetail(${order.id})" title="詳細">
+                        👁
+                    </button>
+                    <button class="btn-small btn-primary" onclick="downloadPurchaseOrderPDF(${order.id}, '${order.order_number}')" title="PDFダウンロード">
+                        📄
+                    </button>
+                    <button class="btn-small btn-success" onclick="reviewDispatchOrder(${order.id})" title="確認">
+                        ✅ 確認
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading review orders:', error);
+        showError('注文書の読み込みに失敗しました');
+    }
+}
+
+// 承認待ちの注文書を読み込み
+async function loadApproveOrders() {
+    try {
+        const response = await fetch('/api/dispatch/orders');
+        const data = await response.json();
+
+        const tbody = document.getElementById('approveOrdersTableBody');
+        if (!tbody) return;
+
+        if (!data.success || !data.data || data.data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #999;">注文書がありません</td></tr>';
+            return;
+        }
+
+        // 確認済みだが未承認の注文書のみをフィルタ
+        const unapprovedOrders = data.data.filter(order => order.reviewed_by_name && !order.approved_by_name);
+
+        if (unapprovedOrders.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="10" style="text-align: center; color: #999;">承認待ちの注文書がありません</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = unapprovedOrders.map(order => `
+            <tr>
+                <td><strong>${order.order_number}</strong></td>
+                <td>${order.supplier_name || '-'}</td>
+                <td>${order.total_items || 0}件</td>
+                <td>¥${(order.total_amount || 0).toLocaleString()}</td>
+                <td>
+                    <span class="status-badge status-${order.status === '未送信' ? 'pending' : 'sent'}">
+                        ${order.status}
+                    </span>
+                </td>
+                <td>
+                    ✅ ${order.reviewed_by_name}<br>
+                    <small>${order.reviewed_at ? new Date(order.reviewed_at).toLocaleString('ja-JP') : ''}</small>
+                </td>
+                <td>${order.reviewed_at ? new Date(order.reviewed_at).toLocaleString('ja-JP') : '-'}</td>
+                <td>${order.created_by || '-'}</td>
+                <td>${order.created_at ? new Date(order.created_at).toLocaleString('ja-JP') : '-'}</td>
+                <td>
+                    <button class="btn-small btn-edit" onclick="showDispatchOrderDetail(${order.id})" title="詳細">
+                        👁
+                    </button>
+                    <button class="btn-small btn-primary" onclick="downloadPurchaseOrderPDF(${order.id}, '${order.order_number}')" title="PDFダウンロード">
+                        📄
+                    </button>
+                    <button class="btn-small btn-success" onclick="approveDispatchOrder(${order.id})" title="承認">
+                        👍 承認
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading approve orders:', error);
+        showError('注文書の読み込みに失敗しました');
+    }
+}
+
 // グローバルに公開
 window.deleteDispatchOrder = deleteDispatchOrder;
+window.reviewDispatchOrder = reviewDispatchOrder;
+window.approveDispatchOrder = approveDispatchOrder;
+window.loadReviewOrders = loadReviewOrders;
+window.loadApproveOrders = loadApproveOrders;
+window.filterPendingOrders = filterPendingOrders;

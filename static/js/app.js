@@ -400,6 +400,8 @@ function switchDispatchSubtab(subtab) {
     const subtabPageMap = {
         'requests': 'dispatchRequestsPage',
         'create': 'dispatchCreatePage',
+        'review': 'dispatchReviewPage',
+        'approve': 'dispatchApprovePage',
         'send': 'dispatchSendPage'
     };
 
@@ -415,6 +417,8 @@ function switchDispatchSubtab(subtab) {
     const subtabTitles = {
         'requests': '📋 依頼管理',
         'create': '📝 注文書作成',
+        'review': '✅ 注文書確認',
+        'approve': '👍 注文書承認',
         'send': '📧 注文書送信'
     };
     document.getElementById('pageTitle').textContent = subtabTitles[subtab] || '🛒 発注';
@@ -424,6 +428,10 @@ function switchDispatchSubtab(subtab) {
         initDispatchRequestsPage();
     } else if (typeof initDispatchCreatePage === 'function' && subtab === 'create') {
         initDispatchCreatePage();
+    } else if (typeof loadReviewOrders === 'function' && subtab === 'review') {
+        loadReviewOrders();
+    } else if (typeof loadApproveOrders === 'function' && subtab === 'approve') {
+        loadApproveOrders();
     } else if (typeof initDispatchSendPage === 'function' && subtab === 'send') {
         initDispatchSendPage();
     }

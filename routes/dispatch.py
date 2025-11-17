@@ -11,6 +11,12 @@ import os
 from database_manager import get_db_manager
 from pdf_generator import generate_purchase_order_pdf
 from email_sender import send_purchase_order_email
+from permission_helper import (
+    can_create_dispatch_order,
+    can_review_dispatch_order,
+    can_approve_dispatch_order,
+    get_approval_name
+)
 
 dispatch_bp = Blueprint("dispatch", __name__)
 
@@ -294,6 +300,14 @@ def update_dispatch_item(item_id: int):
 def create_dispatch_order():
     """注文書を作成して保存"""
     try:
+        # 権限チェック（班長以上）
+        user_id = session.get("user_id")
+        if not user_id:
+            return jsonify({"success": False, "error": "ログインが必要です"}), 401
+
+        if not can_create_dispatch_order(user_id):
+            return jsonify({"success": False, "error": "注文書作成の権限がありません（班長以上が必要です）"}), 403
+
         data = request.get_json() or {}
         supplier_id = data.get("supplier_id")
         item_ids = data.get("item_ids", [])
@@ -373,7 +387,11 @@ def create_dispatch_order():
                 "created_by": str(created_by),
                 "created_at": datetime.now(),
                 "note": str(note) if note else "",
-                "daily_count": int(daily_count)
+                "daily_count": int(daily_count),
+                "reviewed_by_name": "",
+                "reviewed_at": None,
+                "approved_by_name": "",
+                "approved_at": None
             }
             # DataFrameをPython標準型の辞書リストに変換
             items_for_pdf = []
@@ -490,6 +508,12 @@ def get_dispatch_orders():
                 do.sent_at,
                 do.sent_email,
                 do.note,
+                do.reviewed_by,
+                do.reviewed_by_name,
+                do.reviewed_at,
+                do.approved_by,
+                do.approved_by_name,
+                do.approved_at,
                 s.email as supplier_email
             FROM dispatch_orders do
             LEFT JOIN suppliers s ON do.supplier_id = s.id
@@ -507,13 +531,28 @@ def get_dispatch_orders():
             df["sent_at"] = df["sent_at"].apply(
                 lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(x) else None
             )
+        if "reviewed_at" in df.columns and not df.empty:
+            df["reviewed_at"] = df["reviewed_at"].apply(
+                lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(x) else None
+            )
+        if "approved_at" in df.columns and not df.empty:
+            df["approved_at"] = df["approved_at"].apply(
+                lambda x: x.strftime("%Y-%m-%d %H:%M:%S") if pd.notna(x) else None
+            )
 
         # NaTをNoneに変換
         df = df.where(df.notna(), None)
 
         # 各注文書の商品情報を取得
         orders = df.to_dict(orient="records")
+
+        # NaN値をNoneに変換（JSONシリアライズ対策）
+        import math
         for order in orders:
+            for key, value in list(order.items()):
+                if isinstance(value, float) and math.isnan(value):
+                    order[key] = None
+
             order_id = order['id']
             items_df = db.execute_query(
                 """
@@ -527,7 +566,15 @@ def get_dispatch_orders():
             items_df = items_df.where(items_df.notna(), None)
             order['items'] = items_df.to_dict(orient="records")
 
-        return jsonify({"success": True, "data": orders})
+        # ユーザーの権限情報を取得
+        user_id = session.get("user_id")
+        username = session.get("username")
+        permissions = {
+            "can_review": can_review_dispatch_order(user_id) if user_id else False,
+            "can_approve": can_approve_dispatch_order(user_id, username) if user_id else False
+        }
+
+        return jsonify({"success": True, "data": orders, "permissions": permissions})
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500
 
@@ -598,6 +645,7 @@ def _get_or_generate_pdf(order_id: int):
         """
         SELECT
             do.order_number, do.supplier_id, do.supplier_name, do.created_by, do.created_at, do.note, do.pdf_path,
+            do.reviewed_by_name, do.reviewed_at, do.approved_by_name, do.approved_at,
             s.contact_person
         FROM dispatch_orders do
         LEFT JOIN suppliers s ON do.supplier_id = s.id
@@ -673,7 +721,11 @@ def _get_or_generate_pdf(order_id: int):
         "created_by": str(order_data.get('created_by', '')),
         "created_at": order_data.get('created_at'),
         "note": str(order_data.get('note', '')) if order_data.get('note') else "",
-        "daily_count": int(daily_count)
+        "daily_count": int(daily_count),
+        "reviewed_by_name": str(order_data.get('reviewed_by_name', '')) if pd.notna(order_data.get('reviewed_by_name')) else "",
+        "reviewed_at": order_data.get('reviewed_at'),
+        "approved_by_name": str(order_data.get('approved_by_name', '')) if pd.notna(order_data.get('approved_by_name')) else "",
+        "approved_at": order_data.get('approved_at')
     }
     items = items_df.to_dict(orient="records")
     pdf_path = generate_purchase_order_pdf(order_data_for_pdf, items)
@@ -916,6 +968,137 @@ def delete_dispatch_order(order_id: int):
         return jsonify({
             "success": True,
             "message": "注文書を削除しました"
+        })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+# ========================================
+# 4. 注文書確認・承認API
+# ========================================
+
+@dispatch_bp.route("/api/dispatch/orders/<int:order_id>/review", methods=["POST"])
+def review_dispatch_order(order_id: int):
+    """注文書を確認（係長以上）"""
+    try:
+        # 権限チェック（係長以上）
+        user_id = session.get("user_id")
+        username = session.get("username")
+
+        if not user_id:
+            return jsonify({"success": False, "error": "ログインが必要です"}), 401
+
+        if not can_review_dispatch_order(user_id):
+            return jsonify({"success": False, "error": "注文書確認の権限がありません（係長以上が必要です）"}), 403
+
+        db = get_db_manager()
+
+        # 注文書が存在するか確認
+        order_df = db.execute_query(
+            "SELECT id, order_number, status FROM dispatch_orders WHERE id = :id",
+            {"id": order_id}
+        )
+
+        if order_df.empty:
+            return jsonify({"success": False, "error": "注文書が見つかりません"}), 404
+
+        # ユーザー情報を取得
+        user_df = db.execute_query(
+            "SELECT full_name FROM users WHERE id = :id",
+            {"id": user_id}
+        )
+
+        if user_df.empty:
+            return jsonify({"success": False, "error": "ユーザー情報が見つかりません"}), 404
+
+        full_name = user_df.iloc[0]["full_name"]
+
+        # 確認情報を更新（PDFパスをNULLにして再生成を促す）
+        db.execute_update(
+            """
+            UPDATE dispatch_orders
+            SET reviewed_by = :user_id,
+                reviewed_by_name = :full_name,
+                reviewed_at = :reviewed_at,
+                pdf_path = NULL
+            WHERE id = :order_id
+            """,
+            {
+                "user_id": user_id,
+                "full_name": full_name,
+                "reviewed_at": datetime.now(),
+                "order_id": order_id
+            }
+        )
+
+        return jsonify({
+            "success": True,
+            "message": f"{full_name} が注文書を確認しました"
+        })
+    except Exception as exc:
+        return jsonify({"success": False, "error": str(exc)}), 500
+
+
+@dispatch_bp.route("/api/dispatch/orders/<int:order_id>/approve", methods=["POST"])
+def approve_dispatch_order(order_id: int):
+    """注文書を承認（課長以上、またはatsumi係長）"""
+    try:
+        # 権限チェック（課長以上、またはatsumi係長）
+        user_id = session.get("user_id")
+        username = session.get("username")
+
+        if not user_id:
+            return jsonify({"success": False, "error": "ログインが必要です"}), 401
+
+        if not can_approve_dispatch_order(user_id, username):
+            return jsonify({"success": False, "error": "注文書承認の権限がありません（課長以上が必要です）"}), 403
+
+        db = get_db_manager()
+
+        # 注文書が存在するか確認
+        order_df = db.execute_query(
+            "SELECT id, order_number, status FROM dispatch_orders WHERE id = :id",
+            {"id": order_id}
+        )
+
+        if order_df.empty:
+            return jsonify({"success": False, "error": "注文書が見つかりません"}), 404
+
+        # ユーザー情報を取得
+        user_df = db.execute_query(
+            "SELECT full_name FROM users WHERE id = :id",
+            {"id": user_id}
+        )
+
+        if user_df.empty:
+            return jsonify({"success": False, "error": "ユーザー情報が見つかりません"}), 404
+
+        full_name = user_df.iloc[0]["full_name"]
+
+        # 承認者名を取得（atsumi係長の場合は「(代)」を追加）
+        approval_name = get_approval_name(user_id, username, full_name)
+
+        # 承認情報を更新（PDFパスをNULLにして再生成を促す）
+        db.execute_update(
+            """
+            UPDATE dispatch_orders
+            SET approved_by = :user_id,
+                approved_by_name = :approval_name,
+                approved_at = :approved_at,
+                pdf_path = NULL
+            WHERE id = :order_id
+            """,
+            {
+                "user_id": user_id,
+                "approval_name": approval_name,
+                "approved_at": datetime.now(),
+                "order_id": order_id
+            }
+        )
+
+        return jsonify({
+            "success": True,
+            "message": f"{approval_name} が注文書を承認しました"
         })
     except Exception as exc:
         return jsonify({"success": False, "error": str(exc)}), 500

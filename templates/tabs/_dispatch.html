@@ -2,6 +2,8 @@
         <div class="subtab-group">
             <button class="subtab-btn active" data-subtab="requests">📋 依頼管理</button>
             <button class="subtab-btn" data-subtab="create">📝 注文書作成</button>
+            <button class="subtab-btn" data-subtab="review">✅ 注文書確認</button>
+            <button class="subtab-btn" data-subtab="approve">👍 注文書承認</button>
             <button class="subtab-btn" data-subtab="send">📧 注文書送信</button>
         </div>
     </div>
@@ -15,6 +17,15 @@
         <div class="button-group" style="margin: 20px;">
             <button class="btn btn-primary" onclick="loadPendingOrders()">🔄 依頼を更新</button>
             <button class="btn btn-secondary" onclick="showAddDirectOrderModal()">➕ 消耗品を直接追加</button>
+        </div>
+
+        <div class="filter-container" style="margin: 20px; margin-top: 0;">
+            <label for="requestOrderStatusFilter" style="margin-right: 10px; font-weight: bold;">注文状態フィルタ</label>
+            <select id="requestOrderStatusFilter" class="input-field" style="max-width: 220px;">
+                <option value="all">すべて</option>
+                <option value="依頼中">依頼中</option>
+                <option value="発注準備">発注準備</option>
+            </select>
         </div>
 
         <div class="table-container">
@@ -59,10 +70,78 @@
         </div>
     </div>
 
+    <div id="dispatchReviewPage" class="page-content">
+        <div class="page-header">
+            <h2>✅ 注文書確認</h2>
+            <p>作成済みの注文書を確認します（係長以上）</p>
+        </div>
+
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" onclick="loadReviewOrders()">🔄 注文書を更新</button>
+        </div>
+
+        <div class="table-container">
+            <table class="employees-table">
+                <thead>
+                    <tr>
+                        <th>注文書番号</th>
+                        <th>購入先</th>
+                        <th>明細数</th>
+                        <th>合計金額</th>
+                        <th>状態</th>
+                        <th>作成者</th>
+                        <th>作成日時</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="reviewOrdersTableBody">
+                    <tr>
+                        <td colspan="8" class="loading">読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="dispatchApprovePage" class="page-content">
+        <div class="page-header">
+            <h2>👍 注文書承認</h2>
+            <p>確認済みの注文書を承認します（課長以上、またはatsumi係長）</p>
+        </div>
+
+        <div class="button-group" style="margin: 20px;">
+            <button class="btn btn-primary" onclick="loadApproveOrders()">🔄 注文書を更新</button>
+        </div>
+
+        <div class="table-container">
+            <table class="employees-table">
+                <thead>
+                    <tr>
+                        <th>注文書番号</th>
+                        <th>購入先</th>
+                        <th>明細数</th>
+                        <th>合計金額</th>
+                        <th>状態</th>
+                        <th>確認者</th>
+                        <th>確認日時</th>
+                        <th>作成者</th>
+                        <th>作成日時</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody id="approveOrdersTableBody">
+                    <tr>
+                        <td colspan="10" class="loading">読み込み中...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
     <div id="dispatchSendPage" class="page-content">
         <div class="page-header">
             <h2>📧 注文書送信</h2>
-            <p>作成済みの注文書を確認し、購入先にメール送信します</p>
+            <p>承認済みの注文書を購入先にメール送信します</p>
         </div>
 
         <div class="button-group" style="margin: 20px;">
@@ -78,6 +157,8 @@
                         <th>明細数</th>
                         <th>合計金額</th>
                         <th>状態</th>
+                        <th>確認者</th>
+                        <th>承認者</th>
                         <th>作成者</th>
                         <th>作成日時</th>
                         <th>送信日時</th>
@@ -86,7 +167,7 @@
                 </thead>
                 <tbody id="dispatchOrdersTableBody">
                     <tr>
-                        <td colspan="9" class="loading">読み込み中...</td>
+                        <td colspan="11" class="loading">読み込み中...</td>
                     </tr>
                 </tbody>
             </table>
