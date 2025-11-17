@@ -455,13 +455,6 @@ def create_dispatch_order():
                 }
             )
 
-        # 元のordersのステータスを「発注済」に更新
-        for item_id in item_ids:
-            db.execute_update(
-                "UPDATE orders SET status = '発注済', ordered_date = :ordered_date WHERE id = :id",
-                {"ordered_date": datetime.now(), "id": item_id}
-            )
-
         return jsonify({
             "success": True,
             "message": "注文書を作成しました",

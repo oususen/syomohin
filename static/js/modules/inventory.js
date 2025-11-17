@@ -105,13 +105,14 @@ function renderInventory(items) {
         const pendingOrders = item['依頼中注文'] || [];
         const completedOrders = item['発注済み注文'] || [];
 
-        // 依頼中注文の詳細HTML
+        // 依頼中注文の詳細HTML（商品の注文状態が「依頼中」または「発注準備」の場合のみ表示）
         let pendingOrdersHtml = '';
-        if (orderStatus === '依頼中' && pendingOrders.length > 0) {
+        if ((orderStatus === '依頼中' || orderStatus === '発注準備') && pendingOrders.length > 0) {
+            const recentPendingOrders = pendingOrders.slice(0, 2); // 直近2件のみ
             pendingOrdersHtml = `
                 <div class="order-details-section">
-                    <div class="order-details-title">📋 注文依頼詳細</div>
-                    ${pendingOrders.map(order => `
+                    <div class="order-details-title">📋 注文依頼詳細（直近2件）</div>
+                    ${recentPendingOrders.map(order => `
                         <div class="order-detail-item">
                             <span>依頼日: ${order['依頼日'] || '-'}</span>
                             <span>依頼者: ${order['依頼者'] || '-'}</span>
@@ -122,7 +123,7 @@ function renderInventory(items) {
             `;
         }
 
-        // 発注済み注文の詳細HTML（直近2件のみ）
+        // 発注済み注文の詳細HTML（商品の注文状態が「発注済み」の場合のみ表示）
         let completedOrdersHtml = '';
         if (orderStatus === '発注済み' && completedOrders.length > 0) {
             const recentOrders = completedOrders.slice(0, 2); // 直近2件のみ
@@ -140,7 +141,7 @@ function renderInventory(items) {
             `;
         }
 
-        // 入庫詳細HTML（直近2件のみ）
+        // 入庫詳細HTML（商品の注文状態が「入庫済み」の場合のみ表示）
         const inboundDetails = item['入庫詳細'] || [];
         let inboundDetailsHtml = '';
         if (orderStatus === '入庫済み' && inboundDetails.length > 0) {

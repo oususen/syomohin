@@ -107,10 +107,10 @@ def get_inventory():
                         o.requester_name AS 依頼者,
                         o.quantity AS 依頼数量,
                         o.deadline AS 納期,
-                        o.ordered_date AS 注文日
+                        o.ordered_date AS 注文日,
+                        o.status AS ステータス
                     FROM orders o
                     WHERE o.consumable_id IN ({placeholders})
-                    AND o.status = '依頼中'
                     ORDER BY o.requested_date DESC
                 """
 
