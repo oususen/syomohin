@@ -3,18 +3,24 @@ version: '3.8'
 services:
   app:
     build: .
-    container_name: syomohin-app
-    restart: unless-stopped
+    container_name: syomohin_app_prod
+    restart: always
     ports:
       - "8504:8504"
-    env_file:
-      - .env
+    environment:
+      - INVENTORY_DB_HOST=${PRIMARY_DB_HOST:-mysql}
+      - INVENTORY_DB_PORT=${PRIMARY_DB_PORT:-3306}
+      - INVENTORY_DB_USER=${PRIMARY_DB_USER:-root}
+      - PRIMARY_DB_PASSWORD=${PRIMARY_DB_PASSWORD}
+      - INVENTORY_DB_NAME=${INVENTORY_DB_NAME:-inventory_db}
+      - FLASK_ENV=production
     volumes:
       - ./uploads:/app/uploads
       - ./data:/app/data
       - ./static:/app/static
+      - ./.env:/app/.env:ro
     networks:
-      - syomohin-network
+      - ts_pm_network_v2
     logging:
       driver: "json-file"
       options:
@@ -22,5 +28,5 @@ services:
         max-file: "3"
 
 networks:
-  syomohin-network:
-    driver: bridge
+  ts_pm_network_v2:
+    external: true
