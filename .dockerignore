@@ -1,0 +1,55 @@
+# Python関連
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+
+# IDE関連
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Git関連
+.git/
+.gitignore
+.gitattributes
+
+# ドキュメント
+*.md
+docs/
+README.md
+
+# ログファイル
+*.log
+
+# OS関連
+.DS_Store
+Thumbs.db
+
+# テスト関連
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Claude関連
+.claude/
+
+# 本番環境では含めない（環境変数で別途設定）
+.env
+
+# アップロードファイル（本番環境のボリュームマウントを使用）
+uploads/*
+
+# データファイル（本番環境のボリュームマウントを使用）
+data/*.db
+data/*.sqlite
+
+# 一時ファイル
+*.tmp
+*.bak
