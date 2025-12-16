@@ -19,25 +19,95 @@ class PurchaseOrderGenerator:
         self.width, self.height = A4
         self.margin = 15 * mm
 
-        # 日本語フォントの登録（システムフォントを使用）
-        try:
-            # Windowsの標準フォント
-            font_paths = [
-                "C:/Windows/Fonts/msgothic.ttc",  # MSゴシック
-                "C:/Windows/Fonts/msmincho.ttc",  # MS明朝
-                "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",  # Mac
-                "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf"  # Linux
-            ]
+        self._register_font()
 
-            for font_path in font_paths:
-                if os.path.exists(font_path):
-                    pdfmetrics.registerFont(TTFont('Japanese', font_path))
-                    self.font_name = 'Japanese'
-                    break
+    def _register_font(self):
+        """
+        日本語フォントを登録する。
+        ts_pm_all_v2プロジェクトのフォント検索ロジックを参考に、
+        様々な環境でフォントを見つけられるようにする。
+        """
+        # 既に登録済みの場合はスキップ
+        if 'Japanese' in pdfmetrics.getRegisteredFontNames():
+            self.font_name = 'Japanese'
+            return
+
+        # Windowsフォント候補
+        windows_fonts = [
+            "C:/Windows/Fonts/msgothic.ttc",
+            "C:/Windows/Fonts/meiryo.ttc",
+            "C:/Windows/Fonts/msmincho.ttc",
+            "C:/Windows/Fonts/yugothic.ttf",
+        ]
+
+        # Linuxフォント候補（Docker/Ubuntu用）
+        linux_fonts = [
+            "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
+            "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
+            "/usr/share/fonts/truetype/ipafont/ipag.ttf",
+            "/usr/share/fonts/truetype/ipafont-gothic/ipag.ttf",
+            "/usr/share/fonts/truetype/takao-gothic/TakaoPGothic.ttf",
+            "/usr/share/fonts/truetype/noto-cjk/NotoSansCJK-Regular.ttf",
+            "/usr/share/fonts/truetype/noto/NotoSansCJK-jp-Regular.otf",
+        ]
+
+        # Macフォント候補
+        mac_fonts = [
+            "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+            "/System/Library/Fonts/ヒラギノ角ゴシック ProN W3.otf",
+            "/Library/Fonts/ヒラギノ角ゴ ProN W3.otc",
+        ]
+
+        # OSに応じて候補を選択
+        candidates = []
+        if os.name == "nt":
+            candidates = windows_fonts
+        elif hasattr(os, 'uname'):
+            if os.uname().sysname == "Darwin":
+                candidates = mac_fonts
             else:
-                # フォントが見つからない場合はHelveticaを使用
-                self.font_name = 'Helvetica'
-        except Exception:
+                candidates = linux_fonts
+        else:
+            candidates = linux_fonts
+
+        # 全候補を順番に試す（見つからない場合は全環境の候補も試す）
+        all_candidates = list(candidates) + [p for p in (windows_fonts + linux_fonts + mac_fonts) if p not in candidates]
+
+        # 各フォントを試して、最初に成功したものを使用
+        font_registered = False
+        last_error = None
+
+        for font_path in all_candidates:
+            if not os.path.exists(font_path):
+                continue
+
+            try:
+                # フォント登録を試みる
+                pdfmetrics.registerFont(TTFont("Japanese", font_path))
+                self.font_name = 'Japanese'
+                font_registered = True
+                print(f"✅ 日本語フォントを登録しました: {font_path}")
+                return
+            except Exception as e:
+                # このフォントは使えないので次を試す
+                last_error = e
+                print(f"⚠️ フォント読み込みエラー（次を試します）: {font_path} - {str(e)[:100]}")
+                continue
+
+        if not font_registered:
+            error_msg = (
+                "日本語フォントが見つからないか、読み込みに失敗しました。\n\n"
+                "Dockerコンテナの場合は、以下のコマンドでフォントをインストールしてください:\n"
+                "  apt-get update && apt-get install -y fonts-ipafont-gothic fonts-takao-gothic\n\n"
+                "Windowsの場合は、システムフォントが正しくインストールされているか確認してください。\n"
+                "Linuxの場合は、以下のいずれかをインストールしてください:\n"
+                "  - fonts-ipafont-gothic (推奨)\n"
+                "  - fonts-takao-gothic\n\n"
+            )
+            if last_error:
+                error_msg += f"最後のエラー: {str(last_error)}"
+            print(f"⚠️ {error_msg}")
+            # フォールバックとしてHelveticaを設定するが、日本語は文字化けする
             self.font_name = 'Helvetica'
 
     def generate_purchase_order(self, order_data, items, output_path):
@@ -49,6 +119,9 @@ class PurchaseOrderGenerator:
             items: 注文書明細リスト（list of dict）
             output_path: 出力ファイルパス
         """
+        if self.font_name == 'Helvetica':
+            print("警告: 日本語フォントが利用できないため、PDFが文字化けする可能性があります。")
+
         c = canvas.Canvas(output_path, pagesize=A4)
 
         # タイトル

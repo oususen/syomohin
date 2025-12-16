@@ -5,17 +5,25 @@ FROM python:3.13-slim
 WORKDIR /app
 
 # システムパッケージの更新と必要なパッケージのインストール
+# 日本語フォントも追加
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libglx-mesa0 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
     libxrender-dev \
+    fonts-ipafont-gothic \
+    fonts-takao-gothic \
     && rm -rf /var/lib/apt/lists/*
 
 # requirements.txtをコピーして依存関係をインストール
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+
+# フォントディレクトリを作成し、フォントファイルをコピー（ディレクトリが存在する場合のみ）
+# `COPY`はソースが存在しないとエラーになるため、`RUN`と`cp`で対応
+RUN mkdir -p /usr/share/fonts/truetype/custom
+RUN if [ -d "static/fonts" ] && [ -n "$(ls -A static/fonts)" ]; then cp -r static/fonts/. /usr/share/fonts/truetype/custom/; fi
 
 # アプリケーションファイルをコピー
 COPY . .

@@ -3,6 +3,7 @@ PDF生成ユーティリティ
 """
 from __future__ import annotations
 
+import os
 from datetime import datetime
 from io import BytesIO
 from pathlib import Path
@@ -12,9 +13,104 @@ from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 
 from config import PDF_FOLDER
 from utils.validators import sanitize_filename
+
+
+def register_japanese_fonts() -> str:
+    """
+    ReportLab で日本語を扱えるようにフォントを登録する。
+
+    Windows環境ではMSゴシックまたはメイリオ、
+    Linux環境ではNoto Sans JP、IPAゴシック、TakaoPゴシック、
+    Mac環境ではヒラギノを使用する。
+    既に登録済みの場合は何もしない。
+
+    Returns:
+        登録されたフォント名（'Japanese' または 'Helvetica'）
+    """
+    if "Japanese" in pdfmetrics.getRegisteredFontNames():
+        return "Japanese"
+
+    # Windowsフォント候補
+    windows_fonts = [
+        "C:/Windows/Fonts/msgothic.ttc",
+        "C:/Windows/Fonts/meiryo.ttc",
+        "C:/Windows/Fonts/msmincho.ttc",
+        "C:/Windows/Fonts/yugothic.ttf",
+    ]
+
+    # Linuxフォント候補（Docker/Ubuntu用）
+    linux_fonts = [
+        "/usr/share/fonts/truetype/fonts-japanese-gothic.ttf",
+        "/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf",
+        "/usr/share/fonts/truetype/ipafont/ipag.ttf",
+        "/usr/share/fonts/truetype/ipafont-gothic/ipag.ttf",
+        "/usr/share/fonts/truetype/takao-gothic/TakaoPGothic.ttf",
+        "/usr/share/fonts/truetype/noto-cjk/NotoSansCJK-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSansCJK-jp-Regular.otf",
+    ]
+
+    # Macフォント候補
+    mac_fonts = [
+        "/System/Library/Fonts/ヒラギノ角ゴシック W3.ttc",
+        "/System/Library/Fonts/ヒラギノ角ゴシック ProN W3.otf",
+        "/Library/Fonts/ヒラギノ角ゴ ProN W3.otc",
+    ]
+
+    # OSに応じて候補を選択
+    candidates = []
+    if os.name == "nt":
+        candidates = windows_fonts
+    elif hasattr(os, 'uname'):
+        if os.uname().sysname == "Darwin":
+            candidates = mac_fonts
+        else:
+            candidates = linux_fonts
+    else:
+        candidates = linux_fonts
+
+    # 全候補を順番に試す（見つからない場合は全環境の候補も試す）
+    all_candidates = list(candidates) + [p for p in (windows_fonts + linux_fonts + mac_fonts) if p not in candidates]
+
+    # 各フォントを試して、最初に成功したものを使用
+    font_registered = False
+    last_error = None
+
+    for font_path in all_candidates:
+        if not os.path.exists(font_path):
+            continue
+
+        try:
+            # フォント登録を試みる
+            pdfmetrics.registerFont(TTFont("Japanese", font_path))
+            font_registered = True
+            print(f"✅ 日本語フォントを登録しました: {font_path}")
+            return "Japanese"
+        except Exception as e:
+            # このフォントは使えないので次を試す
+            last_error = e
+            print(f"⚠️ フォント読み込みエラー（次を試します）: {font_path} - {str(e)[:100]}")
+            continue
+
+    if not font_registered:
+        error_msg = (
+            "日本語フォントが見つからないか、読み込みに失敗しました。\n\n"
+            "Dockerコンテナの場合は、以下のコマンドでフォントをインストールしてください:\n"
+            "  apt-get update && apt-get install -y fonts-ipafont-gothic fonts-takao-gothic\n\n"
+            "Windowsの場合は、システムフォントが正しくインストールされているか確認してください。\n"
+            "Linuxの場合は、以下のいずれかをインストールしてください:\n"
+            "  - fonts-ipafont-gothic (推奨)\n"
+            "  - fonts-takao-gothic\n\n"
+        )
+        if last_error:
+            error_msg += f"最後のエラー: {str(last_error)}"
+        print(f"⚠️ {error_msg}")
+        # フォールバックとしてHelveticaを設定するが、日本語は文字化けする
+        return "Helvetica"
 
 
 def fetch_orders_for_pdf(db, order_ids: list[int]):
@@ -50,6 +146,11 @@ def render_order_pdf(order_rows, order_number: str | None = None, notes: str = "
     if order_rows.empty:
         raise ValueError("注文データが存在しません")
 
+    # 日本語フォントを登録
+    font_name = register_japanese_fonts()
+    if font_name == "Helvetica":
+        print("警告: 日本語フォントが利用できないため、PDFが文字化けする可能性があります。")
+
     supplier_name = order_rows.iloc[0].get("supplier_name") or "未設定"
     requester = order_rows.iloc[0].get("requester_name") or ""
     deadline = order_rows.iloc[0].get("deadline") or ""
@@ -75,6 +176,7 @@ def render_order_pdf(order_rows, order_number: str | None = None, notes: str = "
         parent=styles["Title"],
         fontSize=20,
         alignment=1,
+        fontName=font_name,
     )
     story.append(Paragraph("注文書", title_style))
     story.append(Spacer(1, 15))
@@ -88,7 +190,7 @@ def render_order_pdf(order_rows, order_number: str | None = None, notes: str = "
     info_table.setStyle(
         TableStyle(
             [
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 0), (-1, -1), font_name),
                 ("FONTSIZE", (0, 0), (-1, -1), 10),
                 ("ALIGN", (0, 0), (0, -1), "RIGHT"),
                 ("ALIGN", (2, 0), (2, -1), "RIGHT"),
@@ -124,7 +226,7 @@ def render_order_pdf(order_rows, order_number: str | None = None, notes: str = "
     detail_table.setStyle(
         TableStyle(
             [
-                ("FONTNAME", (0, 0), (-1, -1), "Helvetica"),
+                ("FONTNAME", (0, 0), (-1, -1), font_name),
                 ("FONTSIZE", (0, 0), (-1, -1), 9),
                 ("BACKGROUND", (0, 0), (-1, 0), colors.grey),
                 ("TEXTCOLOR", (0, 0), (-1, 0), colors.whitesmoke),
@@ -141,10 +243,20 @@ def render_order_pdf(order_rows, order_number: str | None = None, notes: str = "
     story.append(Spacer(1, 15))
 
     if notes:
-        story.append(Paragraph(f"<b>備考</b> {notes}", styles["Normal"]))
+        note_style = ParagraphStyle(
+            "Note",
+            parent=styles["Normal"],
+            fontName=font_name,
+        )
+        story.append(Paragraph(f"<b>備考</b> {notes}", note_style))
         story.append(Spacer(1, 10))
 
-    story.append(Paragraph("上記内容にて発注いたします。よろしくお願いいたします。", styles["Normal"]))
+    footer_style = ParagraphStyle(
+        "Footer",
+        parent=styles["Normal"],
+        fontName=font_name,
+    )
+    story.append(Paragraph("上記内容にて発注いたします。よろしくお願いいたします。", footer_style))
     doc.build(story)
 
     pdf_bytes = pdf_buffer.getvalue()

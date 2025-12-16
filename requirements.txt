@@ -1,4 +1,10 @@
-streamlit==1.39.0
+Flask
+Flask-Cors
 pandas==2.2.3
 Pillow==10.4.0
 opencv-python-headless==4.10.0.84
+python-dotenv
+SQLAlchemy
+mysql-connector-python
+reportlab
+PyMySQL
