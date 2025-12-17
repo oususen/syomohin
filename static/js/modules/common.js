@@ -33,6 +33,19 @@ const PAGE_PERMISSION_RULES = {
     users: ['ユーザー管理']
 };
 
+function normalizeEmployeeCode(code, width = 6) {
+    const trimmed = (code ?? '').toString().trim();
+    if (!trimmed) {
+        return '';
+    }
+    if (/^\d+$/.test(trimmed) && trimmed.length < width) {
+        return trimmed.padStart(width, '0');
+    }
+    return trimmed;
+}
+
+window.normalizeEmployeeCode = normalizeEmployeeCode;
+
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', () => {
     init();
@@ -84,6 +97,14 @@ function setupEventListeners() {
     });
     document.getElementById('outboundSearchText').addEventListener('input', debounce(() => window.searchItemByName('outbound'), 300));
     document.getElementById('outboundEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('outbound'), 300));
+    document.getElementById('outboundEmployeeCode').addEventListener('blur', () => {
+        const input = document.getElementById('outboundEmployeeCode');
+        const normalized = normalizeEmployeeCode(input.value);
+        if (normalized !== input.value.trim()) {
+            input.value = normalized;
+        }
+        window.loadEmployeeByCode('outbound');
+    });
     document.getElementById('submitOutbound').addEventListener('click', () => window.submitOutbound());
 
     // 入庫ページ
@@ -103,6 +124,14 @@ function setupEventListeners() {
     });
     document.getElementById('inboundSearchText').addEventListener('input', debounce(() => window.searchItemByName('inbound'), 300));
     document.getElementById('inboundEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('inbound'), 300));
+    document.getElementById('inboundEmployeeCode').addEventListener('blur', () => {
+        const input = document.getElementById('inboundEmployeeCode');
+        const normalized = normalizeEmployeeCode(input.value);
+        if (normalized !== input.value.trim()) {
+            input.value = normalized;
+        }
+        window.loadEmployeeByCode('inbound');
+    });
 
     const submitInboundBtn = document.getElementById('submitInbound');
     console.log('submitInbound button:', submitInboundBtn);
@@ -137,6 +166,14 @@ function setupEventListeners() {
         window.openCamera();
     });
     document.getElementById('orderEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('order'), 300));
+    document.getElementById('orderEmployeeCode').addEventListener('blur', () => {
+        const input = document.getElementById('orderEmployeeCode');
+        const normalized = normalizeEmployeeCode(input.value);
+        if (normalized !== input.value.trim()) {
+            input.value = normalized;
+        }
+        window.loadEmployeeByCode('order');
+    });
     document.getElementById('submitOrder').addEventListener('click', () => window.submitOrder());
 
     // 発注状態リストページ

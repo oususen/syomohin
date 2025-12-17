@@ -8,6 +8,20 @@
 
 
 
+function normalizeEmployeeCodeSafe(code, width = 6) {
+    if (typeof window.normalizeEmployeeCode === 'function') {
+        return window.normalizeEmployeeCode(code, width);
+    }
+    const trimmed = (code ?? '').toString().trim();
+    if (!trimmed) {
+        return '';
+    }
+    if (/^\d+$/.test(trimmed) && trimmed.length < width) {
+        return trimmed.padStart(width, '0');
+    }
+    return trimmed;
+}
+
 async function loadItemInfo(type) {
     const qrCodeId = type === 'outbound' ? 'outboundQrCode' :
                      type === 'inbound' ? 'inboundQrCode' : 'orderQrCode';
@@ -120,7 +134,8 @@ async function loadEmployeeByCode(type) {
         return;
     }
 
-    const employeeCode = codeInput.value.trim();
+    const rawEmployeeCode = codeInput.value;
+    const employeeCode = normalizeEmployeeCodeSafe(rawEmployeeCode);
 
     const clearFields = () => {
         personInput.value = '';
@@ -132,6 +147,10 @@ async function loadEmployeeByCode(type) {
     if (!employeeCode) {
         clearFields();
         return;
+    }
+
+    if (employeeCode !== rawEmployeeCode.trim()) {
+        codeInput.value = employeeCode;
     }
 
     try {
@@ -856,15 +875,20 @@ async function selectDispatchOrderForInbound(orderId) {
         const employeeCodeInput = document.getElementById('dispatchInboundEmployeeCode');
         if (employeeCodeInput) {
             const lookup = async () => {
-                const code = employeeCodeInput.value.trim();
-                if (code) {
-                    await loadEmployeeByCodeForDispatchInbound(code);
+                const rawCode = employeeCodeInput.value;
+                const normalizedCode = normalizeEmployeeCodeSafe(rawCode);
+                if (normalizedCode) {
+                    if (normalizedCode !== rawCode.trim()) {
+                        employeeCodeInput.value = normalizedCode;
+                    }
+                    await loadEmployeeByCodeForDispatchInbound(normalizedCode);
                 } else {
                     setDispatchInboundEmployeeFields();
                 }
             };
             const handler = typeof debounce === 'function' ? debounce(lookup, 300) : lookup;
             employeeCodeInput.addEventListener('input', handler);
+            employeeCodeInput.addEventListener('blur', lookup);
         }
 
     } catch (error) {
@@ -887,7 +911,7 @@ function setDispatchInboundEmployeeFields(name = '', department = '') {
 }
 
 async function loadEmployeeByCodeForDispatchInbound(code) {
-    const trimmedCode = code.trim();
+    const trimmedCode = normalizeEmployeeCodeSafe(code);
     if (!trimmedCode) {
         setDispatchInboundEmployeeFields();
         return;
@@ -965,4 +989,3 @@ window.loadManualOrders = loadManualOrders;
 window.loadDispatchOrdersForInbound = loadDispatchOrdersForInbound;
 window.selectDispatchOrderForInbound = selectDispatchOrderForInbound;
 window.submitDispatchOrderInbound = submitDispatchOrderInbound;
-
