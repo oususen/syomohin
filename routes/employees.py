@@ -14,6 +14,13 @@ from utils.permission_utils import require_page_permission
 employees_bp = Blueprint("employees", __name__)
 
 
+def _normalize_employee_code(code: str, width: int = 6) -> str:
+    trimmed = (code or "").strip()
+    if trimmed.isdigit() and len(trimmed) < width:
+        return trimmed.zfill(width)
+    return trimmed
+
+
 @employees_bp.route("/api/employees", methods=["GET"])
 def get_employees():
     """従業員一覧を取得するAPI"""
@@ -49,11 +56,24 @@ def get_employee(employee_id):
 def get_employee_by_code(employee_code):
     """従業員コードで従業員を取得するAPI"""
     try:
+        employee_code = (employee_code or "").strip()
+        normalized = _normalize_employee_code(employee_code)
+
         db = get_db_manager()
-        df = db.execute_query(
-            "SELECT id, code, name, department, email, role FROM employees WHERE code = :code",
-            {"code": employee_code},
-        )
+        if normalized != employee_code:
+            df = db.execute_query(
+                """
+                SELECT id, code, name, department, email, role
+                FROM employees
+                WHERE code = :code OR code = :normalized_code
+                """,
+                {"code": employee_code, "normalized_code": normalized},
+            )
+        else:
+            df = db.execute_query(
+                "SELECT id, code, name, department, email, role FROM employees WHERE code = :code",
+                {"code": employee_code},
+            )
         if df.empty:
             return jsonify({"success": False, "error": "従業員が見つかりません"}), 404
 
