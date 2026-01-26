@@ -38,5 +38,5 @@ EXPOSE 8504
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=app.py
 
-# アプリケーションを起動
-CMD ["python", "app.py"]
+# アプリケーションを起動（本番向けWSGI）
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8504", "app:app"]

@@ -3,8 +3,9 @@ Flask-Cors
 pandas==2.2.3
 Pillow==10.4.0
 opencv-python-headless==4.10.0.84
-python-dotenv
-SQLAlchemy
+python-dotenv==1.0.1
+SQLAlchemy==2.0.36
 mysql-connector-python
-reportlab
-PyMySQL
+reportlab==4.2.2
+PyMySQL==1.1.1
+gunicorn==22.0.0
