@@ -33,17 +33,28 @@ const PAGE_PERMISSION_RULES = {
     users: ['ユーザー管理']
 };
 
-function normalizeEmployeeCode(code, width = 6) {
+function normalizeEmployeeCodeRaw(code) {
     const trimmed = (code ?? '').toString().trim();
     if (!trimmed) {
         return '';
     }
-    if (/^\d+$/.test(trimmed) && trimmed.length < width) {
-        return trimmed.padStart(width, '0');
-    }
-    return trimmed;
+    // Convert full-width digits to ASCII digits
+    return trimmed.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 0x30));
 }
 
+function normalizeEmployeeCode(code, width = 6, options = {}) {
+    const { pad = true } = options;
+    const normalized = normalizeEmployeeCodeRaw(code);
+    if (!normalized) {
+        return '';
+    }
+    if (pad && /^\d+$/.test(normalized) && normalized.length < width) {
+        return normalized.padStart(width, '0');
+    }
+    return normalized;
+}
+
+window.normalizeEmployeeCodeRaw = normalizeEmployeeCodeRaw;
 window.normalizeEmployeeCode = normalizeEmployeeCode;
 
 // ページ読み込み時の初期化
@@ -96,14 +107,9 @@ function setupEventListeners() {
         window.openCamera();
     });
     document.getElementById('outboundSearchText').addEventListener('input', debounce(() => window.searchItemByName('outbound'), 300));
-    document.getElementById('outboundEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('outbound'), 300));
+    document.getElementById('outboundEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('outbound', { pad: false, minLength: 6 }), 300));
     document.getElementById('outboundEmployeeCode').addEventListener('blur', () => {
-        const input = document.getElementById('outboundEmployeeCode');
-        const normalized = normalizeEmployeeCode(input.value);
-        if (normalized !== input.value.trim()) {
-            input.value = normalized;
-        }
-        window.loadEmployeeByCode('outbound');
+        window.loadEmployeeByCode('outbound', { pad: false, minLength: 6 });
     });
     document.getElementById('submitOutbound').addEventListener('click', () => window.submitOutbound());
 
@@ -123,14 +129,9 @@ function setupEventListeners() {
         window.openCamera();
     });
     document.getElementById('inboundSearchText').addEventListener('input', debounce(() => window.searchItemByName('inbound'), 300));
-    document.getElementById('inboundEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('inbound'), 300));
+    document.getElementById('inboundEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('inbound', { pad: false, minLength: 6 }), 300));
     document.getElementById('inboundEmployeeCode').addEventListener('blur', () => {
-        const input = document.getElementById('inboundEmployeeCode');
-        const normalized = normalizeEmployeeCode(input.value);
-        if (normalized !== input.value.trim()) {
-            input.value = normalized;
-        }
-        window.loadEmployeeByCode('inbound');
+        window.loadEmployeeByCode('inbound', { pad: false, minLength: 6 });
     });
 
     const submitInboundBtn = document.getElementById('submitInbound');
@@ -165,14 +166,9 @@ function setupEventListeners() {
         currentQrTarget = 'orderQrCode';
         window.openCamera();
     });
-    document.getElementById('orderEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('order'), 300));
+    document.getElementById('orderEmployeeCode').addEventListener('input', debounce(() => window.loadEmployeeByCode('order', { pad: false, minLength: 6 }), 300));
     document.getElementById('orderEmployeeCode').addEventListener('blur', () => {
-        const input = document.getElementById('orderEmployeeCode');
-        const normalized = normalizeEmployeeCode(input.value);
-        if (normalized !== input.value.trim()) {
-            input.value = normalized;
-        }
-        window.loadEmployeeByCode('order');
+        window.loadEmployeeByCode('order', { pad: false, minLength: 6 });
     });
     document.getElementById('submitOrder').addEventListener('click', () => window.submitOrder());
 

@@ -8,18 +8,20 @@
 
 
 
-function normalizeEmployeeCodeSafe(code, width = 6) {
+function normalizeEmployeeCodeSafe(code, width = 6, options = {}) {
+    const { pad = true } = options;
     if (typeof window.normalizeEmployeeCode === 'function') {
-        return window.normalizeEmployeeCode(code, width);
+        return window.normalizeEmployeeCode(code, width, { pad });
     }
     const trimmed = (code ?? '').toString().trim();
     if (!trimmed) {
         return '';
     }
-    if (/^\d+$/.test(trimmed) && trimmed.length < width) {
-        return trimmed.padStart(width, '0');
+    const normalized = trimmed.replace(/[０-９]/g, (ch) => String.fromCharCode(ch.charCodeAt(0) - 0xFF10 + 0x30));
+    if (pad && /^\d+$/.test(normalized) && normalized.length < width) {
+        return normalized.padStart(width, '0');
     }
-    return trimmed;
+    return normalized;
 }
 
 async function loadItemInfo(type) {
@@ -102,7 +104,11 @@ async function searchItemByName(type) {
 }
 
 // 従業員コードから従業員情報を取得
-async function loadEmployeeByCode(type) {
+async function loadEmployeeByCode(type, options = {}) {
+    const {
+        pad = true,
+        minLength = 1,
+    } = options;
     const config = {
         outbound: {
             code: 'outboundEmployeeCode',
@@ -134,9 +140,6 @@ async function loadEmployeeByCode(type) {
         return;
     }
 
-    const rawEmployeeCode = codeInput.value;
-    const employeeCode = normalizeEmployeeCodeSafe(rawEmployeeCode);
-
     const clearFields = () => {
         personInput.value = '';
         if (departmentInput) {
@@ -144,12 +147,21 @@ async function loadEmployeeByCode(type) {
         }
     };
 
+    const rawEmployeeCode = codeInput.value ?? '';
+    const trimmedEmployeeCode = rawEmployeeCode.trim();
+    const employeeCode = normalizeEmployeeCodeSafe(trimmedEmployeeCode, 6, { pad });
+
     if (!employeeCode) {
         clearFields();
         return;
     }
 
-    if (employeeCode !== rawEmployeeCode.trim()) {
+    if (employeeCode.length < minLength) {
+        clearFields();
+        return;
+    }
+
+    if (employeeCode !== trimmedEmployeeCode) {
         codeInput.value = employeeCode;
     }
 
@@ -875,17 +887,17 @@ async function selectDispatchOrderForInbound(orderId) {
         const employeeCodeInput = document.getElementById('dispatchInboundEmployeeCode');
         if (employeeCodeInput) {
             const lookup = async () => {
-                const rawCode = employeeCodeInput.value;
-                const normalizedCode = normalizeEmployeeCodeSafe(rawCode);
-                if (normalizedCode) {
-                    if (normalizedCode !== rawCode.trim()) {
-                        employeeCodeInput.value = normalizedCode;
-                    }
-                    await loadEmployeeByCodeForDispatchInbound(normalizedCode);
-                } else {
-                    setDispatchInboundEmployeeFields();
-                }
-            };
+            const rawCode = employeeCodeInput.value ?? '';
+            const normalizedCode = normalizeEmployeeCodeSafe(rawCode, 6, { pad: false });
+            if (!normalizedCode || normalizedCode.length < 6) {
+                setDispatchInboundEmployeeFields();
+                return;
+            }
+            if (normalizedCode !== rawCode.trim()) {
+                employeeCodeInput.value = normalizedCode;
+            }
+            await loadEmployeeByCodeForDispatchInbound(normalizedCode);
+        };
             const handler = typeof debounce === 'function' ? debounce(lookup, 300) : lookup;
             employeeCodeInput.addEventListener('input', handler);
             employeeCodeInput.addEventListener('blur', lookup);
@@ -911,8 +923,8 @@ function setDispatchInboundEmployeeFields(name = '', department = '') {
 }
 
 async function loadEmployeeByCodeForDispatchInbound(code) {
-    const trimmedCode = normalizeEmployeeCodeSafe(code);
-    if (!trimmedCode) {
+    const trimmedCode = normalizeEmployeeCodeSafe(code, 6, { pad: false });
+    if (!trimmedCode || trimmedCode.length < 6) {
         setDispatchInboundEmployeeFields();
         return;
     }

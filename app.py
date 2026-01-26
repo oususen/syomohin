@@ -116,9 +116,8 @@ if __name__ == "__main__":
         app.run(
             host="0.0.0.0",
             port=8504,
-            debug=True,
             ssl_context=(str(cert_file), str(key_file)),
         )
     else:
         print("証明書が見つかりません。HTTPで起動します。")
-        app.run(host="0.0.0.0", port=8504, debug=True)
+        app.run(host="0.0.0.0", port=8504)
