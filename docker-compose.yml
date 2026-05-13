@@ -20,6 +20,7 @@ services:
       - ./static:/app/static
       - ./.env:/app/.env:ro
       - ./certs:/app/certs:ro
+      - ./docs:/app/docs:ro
     networks:
       - ts_pm_network_v2
     logging:
