@@ -101,6 +101,46 @@ def download_suppliers_template():
     return response
 
 
+@app.route("/manual")
+def manual():
+    """操作マニュアルをHTMLで表示"""
+    import markdown as md
+    manual_path = Path(__file__).parent / "docs" / "MANUAL.md"
+    text = manual_path.read_text(encoding="utf-8")
+    body = md.markdown(text, extensions=["tables", "toc", "fenced_code"])
+    html = f"""<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>操作マニュアル - 消耗品管理システム</title>
+<style>
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         max-width: 900px; margin: 40px auto; padding: 0 24px; color: #333; line-height: 1.7; }}
+  h1 {{ color: #00796B; border-bottom: 3px solid #009688; padding-bottom: 12px; }}
+  h2 {{ color: #00796B; border-bottom: 1px solid #b2dfdb; padding-bottom: 6px; margin-top: 40px; }}
+  h3 {{ color: #00897B; margin-top: 24px; }}
+  table {{ border-collapse: collapse; width: 100%; margin: 16px 0; }}
+  th {{ background: #009688; color: white; padding: 10px 14px; text-align: left; }}
+  td {{ padding: 9px 14px; border: 1px solid #ddd; }}
+  tr:nth-child(even) {{ background: #f5f5f5; }}
+  code {{ background: #e8f5e9; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; }}
+  pre {{ background: #263238; color: #cfd8dc; padding: 16px; border-radius: 6px; overflow-x: auto; }}
+  pre code {{ background: none; color: inherit; padding: 0; }}
+  blockquote {{ border-left: 4px solid #009688; margin: 0; padding: 8px 16px; background: #e0f2f1; }}
+  .toc {{ background: #f9f9f9; border: 1px solid #ddd; padding: 16px 24px; border-radius: 6px; margin-bottom: 32px; }}
+  .toc ul {{ margin: 0; }}
+  a {{ color: #00796B; }}
+  @media print {{ body {{ margin: 20px; }} }}
+</style>
+</head>
+<body>
+{body}
+</body>
+</html>"""
+    return html
+
+
 @app.route("/uploads/<path:filename>")
 def uploaded_file(filename):
     """アップロードファイルを配信"""
