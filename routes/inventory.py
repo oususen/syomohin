@@ -43,9 +43,13 @@ def normalize_qr_code_value(raw_value: str) -> str:
     # 「管理番号：<消耗品コード> 品名：...」から消耗品コードだけを抽出
     match = re.search(r"管理番号\s*[：:]\s*(.*?)\s*品名", value, flags=re.DOTALL)
     if match:
-        return match.group(1).strip()
+        extracted = match.group(1).strip()
+        # QR読み取り時に混ざる改行/空白を除去してコード一致率を上げる
+        extracted = re.sub(r"\s+", "", extracted)
+        return extracted
 
-    return value
+    # 単体コードの場合も、前後空白と改行ゆれを吸収
+    return re.sub(r"\s+", "", value)
 
 
 @inventory_bp.route("/api/inventory")
