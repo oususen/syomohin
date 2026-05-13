@@ -50,7 +50,7 @@ def normalize_qr_code_value(raw_value: str) -> str:
 
     # key=value形式:
     # "code=MASINA-00172name=..." のように区切り不備でも code 値を抽出する
-    match = re.search(r"code\s*=\s*(.+?)(?:name\s*=|$)", value, flags=re.IGNORECASE | re.DOTALL)
+    match = re.search(r"code\s*[=＝]\s*(.+?)(?:name\s*[=＝]|$)", value, flags=re.IGNORECASE | re.DOTALL)
     if match:
         extracted = re.sub(r"\s+", "", match.group(1).strip())
         if extracted:
@@ -108,8 +108,17 @@ def get_inventory():
 
         # フィルター条件を追加
         if qr_code:
-            query += " AND LOWER(c.code) = LOWER(:qr_code)"
+            compact_qr_code = re.sub(r"[-\s]", "", qr_code)
+            query += """
+                AND (
+                    LOWER(c.code) = LOWER(:qr_code)
+                    OR LOWER(REPLACE(REPLACE(c.code, '-', ''), ' ', '')) = LOWER(:compact_qr_code)
+                    OR LOWER(c.code) LIKE LOWER(:qr_code_prefix)
+                )
+            """
             params["qr_code"] = qr_code
+            params["compact_qr_code"] = compact_qr_code
+            params["qr_code_prefix"] = f"{qr_code}%"
 
         if search_text:
             query += " AND c.name LIKE :search_text"
