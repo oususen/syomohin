@@ -48,7 +48,25 @@ def normalize_qr_code_value(raw_value: str) -> str:
         extracted = re.sub(r"\s+", "", extracted)
         return extracted
 
-    # 単体コードの場合も、前後空白と改行ゆれを吸収
+    # key=value形式:
+    # "code=MASINA-00172name=..." のように区切り不備でも code 値を抽出する
+    match = re.search(r"code\s*=\s*(.+?)(?:name\s*=|$)", value, flags=re.IGNORECASE | re.DOTALL)
+    if match:
+        extracted = re.sub(r"\s+", "", match.group(1).strip())
+        if extracted:
+            return extracted
+
+    # 1行ラベル形式のフォールバック:
+    # 例 "6 MASINA-00178 日東 ..." のように先頭に不要文字がある場合でも
+    # "英字を含み、数字も含む" コードらしいトークンを優先して採用する
+    tokens = [t.strip(".,;:：") for t in re.split(r"\s+", value) if t.strip()]
+    for token in tokens:
+        if re.search(r"[A-Za-z]", token) and re.search(r"\d", token):
+            return token
+    if tokens:
+        return tokens[0]
+
+    # 単体コードの場合は空白/改行ゆれを吸収
     return re.sub(r"\s+", "", value)
 
 
