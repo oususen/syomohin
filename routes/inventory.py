@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import base64
+import re
 
 import cv2
 import numpy as np
@@ -31,6 +32,22 @@ def decode_qr_from_image(image_bytes: bytes) -> str | None:
         return None
 
 
+def normalize_qr_code_value(raw_value: str) -> str:
+    """QR文字列を検索用の消耗品コードに正規化する。"""
+    if not raw_value:
+        return ""
+
+    value = raw_value.strip()
+
+    # 誤って作成された複合形式:
+    # 「管理番号：<消耗品コード> 品名：...」から消耗品コードだけを抽出
+    match = re.search(r"管理番号\s*[：:]\s*(.*?)\s*品名", value, flags=re.DOTALL)
+    if match:
+        return match.group(1).strip()
+
+    return value
+
+
 @inventory_bp.route("/api/inventory")
 def get_inventory():
     """在庫データを取得するAPI"""
@@ -38,7 +55,7 @@ def get_inventory():
         db = get_db_manager()
 
         # クエリパラメータからフィルター条件を取得
-        qr_code = request.args.get("qr_code", "").strip()
+        qr_code = normalize_qr_code_value(request.args.get("qr_code", ""))
         search_text = request.args.get("search_text", "").strip()
         order_status = request.args.get("order_status", "").strip()
         shortage_status = request.args.get("shortage_status", "").strip()
@@ -245,7 +262,14 @@ def decode_qr():
         decoded_value = decode_qr_from_image(image_bytes)
 
         if decoded_value:
-            return jsonify({"success": True, "data": decoded_value})
+            normalized_value = normalize_qr_code_value(decoded_value)
+            return jsonify(
+                {
+                    "success": True,
+                    "data": normalized_value,
+                    "raw_data": decoded_value,
+                }
+            )
         else:
             return jsonify({"success": False, "error": "QRコードを認識できませんでした"})
 
