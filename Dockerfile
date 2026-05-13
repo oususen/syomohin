@@ -39,4 +39,4 @@ ENV PYTHONUNBUFFERED=1
 ENV FLASK_APP=app.py
 
 # アプリケーションを起動（本番向けWSGI）
-CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8504", "app:app"]
+CMD ["gunicorn", "-w", "2", "-b", "0.0.0.0:8504", "--certfile=/app/certs/syomohin.crt", "--keyfile=/app/certs/syomohin.key", "app:app"]
