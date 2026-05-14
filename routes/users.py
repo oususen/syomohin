@@ -47,6 +47,8 @@ def list_users():
                 u.id,
                 u.username,
                 u.full_name,
+                u.last_name,
+                u.first_name,
                 u.email,
                 u.is_active,
                 u.created_at,
@@ -55,7 +57,7 @@ def list_users():
             FROM users u
             LEFT JOIN user_roles ur ON u.id = ur.user_id
             LEFT JOIN roles r ON ur.role_id = r.id
-            GROUP BY u.id, u.username, u.full_name, u.email, u.is_active, u.created_at, u.last_login
+            GROUP BY u.id, u.username, u.full_name, u.last_name, u.first_name, u.email, u.is_active, u.created_at, u.last_login
             ORDER BY u.username
         """
         df = db.execute_query(query)
@@ -160,6 +162,8 @@ def create_user():
                 username,
                 password_hash,
                 full_name,
+                last_name,
+                first_name,
                 email,
                 is_active,
                 smtp_host,
@@ -171,6 +175,8 @@ def create_user():
                 :username,
                 :password_hash,
                 :full_name,
+                :last_name,
+                :first_name,
                 :email,
                 :is_active,
                 :smtp_host,
@@ -183,6 +189,8 @@ def create_user():
                 "username": username,
                 "password_hash": generate_password_hash(password),
                 "full_name": full_name,
+                "last_name": (data.get("last_name") or full_name.split()[0] if full_name else "").strip(),
+                "first_name": (data.get("first_name") or (" ".join(full_name.split()[1:]) if len(full_name.split()) > 1 else "")).strip(),
                 "email": (data.get("email") or "").strip(),
                 "is_active": 1 if data.get("is_active", True) else 0,
                 "smtp_host": smtp_host,

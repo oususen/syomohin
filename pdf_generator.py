@@ -7,9 +7,17 @@ from reportlab.pdfgen import canvas
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.lib import colors
-from reportlab.platypus import Table, TableStyle
+from reportlab.platypus import Table, TableStyle, Paragraph
+from reportlab.lib.styles import ParagraphStyle
 from datetime import datetime
 import os
+
+
+def _last_name(full_name: str) -> str:
+    """姓名からスペース区切りの先頭（姓）だけを返す"""
+    if not full_name:
+        return ''
+    return full_name.split()[0]
 
 
 class PurchaseOrderGenerator:
@@ -225,13 +233,13 @@ class PurchaseOrderGenerator:
         else:
             approved_date = ''
 
-        # 承認欄のテーブル（2行に変更）
+        # 承認欄のテーブル（姓のみ表示）
         approval_data = [
             ['承認', '確認', '作成'],
             [
-                f'{approved_by}\n{approved_date}' if approved_by else '',
-                f'{reviewed_by}\n{reviewed_date}' if reviewed_by else '',
-                f'{created_by}\n{created_date}'
+                f'{_last_name(approved_by)}\n{approved_date}' if approved_by else '',
+                f'{_last_name(reviewed_by)}\n{reviewed_date}' if reviewed_by else '',
+                f'{_last_name(created_by)}\n{created_date}'
             ]
         ]
 
@@ -254,6 +262,11 @@ class PurchaseOrderGenerator:
         """明細テーブルを描画"""
         y_start = self.height - 115 * mm
 
+        # 折り返しスタイル
+        wrap_style = ParagraphStyle(
+            'wrap', fontName=self.font_name, fontSize=7, leading=9, wordWrap='CJK'
+        )
+
         # ヘッダー
         headers = ['No', '発注\nコード', '商品名・仕様', '数量', '単位', '単価', '金額', '納期', '裏議書No', '備考']
 
@@ -270,15 +283,15 @@ class PurchaseOrderGenerator:
 
             row = [
                 str(idx),
-                item.get('order_code', ''),  # 発注コードを使用
-                item.get('name', ''),
+                item.get('order_code', ''),
+                Paragraph(item.get('name', ''), wrap_style),   # 自動折り返し
                 str(quantity),
                 item.get('unit', ''),
                 f"{int(item.get('unit_price', 0)):,}" if item.get('unit_price') else '',
                 f"{int(amount):,}" if amount else '',
                 item.get('deadline', ''),
-                '',  # 裏議書No
-                item.get('note', '') or '-'
+                '',
+                Paragraph(item.get('note', '') or '-', wrap_style)  # 自動折り返し
             ]
             table_data.append(row)
 
@@ -317,8 +330,6 @@ class PurchaseOrderGenerator:
             ('FONTSIZE', (0, 1), (-1, -1), 7),  # データフォントサイズ
             ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
             ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('WORDWRAP', (2, 0), (2, -1), True),  # 商品名の自動折り返し
-            ('WORDWRAP', (9, 0), (9, -1), True),  # 備考の自動折り返し
             # 合計行のスタイル
             ('ALIGN', (0, last_row), (0, last_row), 'CENTER'),  # 合計テキスト中央揃え
             ('BACKGROUND', (0, last_row), (-1, last_row), colors.lightgrey),  # 合計行背景色
