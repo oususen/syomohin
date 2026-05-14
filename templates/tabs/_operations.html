@@ -63,6 +63,25 @@
         </div>
     </div>
 
+    <!-- 出庫確認ダイアログ -->
+    <div id="outboundConfirmDialog" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:2000; align-items:center; justify-content:center;">
+        <div style="background:white; border-radius:12px; padding:32px; max-width:420px; width:90%; box-shadow:0 8px 32px rgba(0,0,0,0.3);">
+            <h3 style="margin:0 0 8px; color:#333; font-size:18px;">出庫の確認</h3>
+            <p id="outboundConfirmMsg" style="margin:0 0 24px; color:#555; font-size:14px; line-height:1.6;"></p>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button id="outboundOnlyBtn" class="btn btn-primary" style="width:100%; padding:14px;">
+                    📤 出庫
+                </button>
+                <button id="outboundAndOrderBtn" class="btn" style="width:100%; padding:14px; background:#FF9800; color:white; border:none; border-radius:6px; font-size:15px; font-weight:600; cursor:pointer;">
+                    📤🛒 出庫＋注文依頼
+                </button>
+                <button id="outboundCancelBtn" class="btn btn-secondary" style="width:100%; padding:14px;">
+                    キャンセル
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     <div id="inboundPage" class="page-content">
         <div class="page-header">

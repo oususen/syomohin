@@ -281,37 +281,72 @@ function displayItemInfo(type, item) {
     document.getElementById(`${type}ItemInfo`).dataset.itemCode = item['コード'];
 }
 
-// 出庫を送信
-async function submitOutbound() {
+// 出庫確認ダイアログを表示
+function submitOutbound() {
+    const code = document.getElementById('outboundItemInfo').dataset.itemCode;
+    const quantity = parseInt(document.getElementById('outboundQuantity').value);
+    const person = document.getElementById('outboundPerson').value.trim();
+    const department = document.getElementById('outboundDepartment').value.trim();
+
+    if (!code) {
+        showError('商品を選択してください');
+        return;
+    }
+    if (!quantity || quantity <= 0) {
+        showError('出庫数量を入力してください');
+        return;
+    }
+    if (!person) {
+        showError('出庫者名を入力してください');
+        return;
+    }
+
+    // ダイアログにメッセージをセット
+    const msg = `商品コード: ${code}\n出庫数量: ${quantity}\n出庫者: ${person}${department ? ' / ' + department : ''}`;
+    document.getElementById('outboundConfirmMsg').textContent = msg;
+
+    const dialog = document.getElementById('outboundConfirmDialog');
+    dialog.style.display = 'flex';
+
+    // ボタンイベント（重複登録を防ぐため clone で付け替え）
+    const onlyBtn = document.getElementById('outboundOnlyBtn');
+    const andOrderBtn = document.getElementById('outboundAndOrderBtn');
+    const cancelBtn = document.getElementById('outboundCancelBtn');
+
+    const newOnly = onlyBtn.cloneNode(true);
+    const newAndOrder = andOrderBtn.cloneNode(true);
+    const newCancel = cancelBtn.cloneNode(true);
+
+    onlyBtn.replaceWith(newOnly);
+    andOrderBtn.replaceWith(newAndOrder);
+    cancelBtn.replaceWith(newCancel);
+
+    newOnly.addEventListener('click', () => {
+        dialog.style.display = 'none';
+        _doOutbound(false);
+    });
+    newAndOrder.addEventListener('click', () => {
+        dialog.style.display = 'none';
+        _doOutbound(true);
+    });
+    newCancel.addEventListener('click', () => {
+        dialog.style.display = 'none';
+    });
+}
+
+// 実際の出庫API呼び出し
+async function _doOutbound(withOrder) {
     const code = document.getElementById('outboundItemInfo').dataset.itemCode;
     const quantity = parseInt(document.getElementById('outboundQuantity').value);
     const person = document.getElementById('outboundPerson').value.trim();
     const department = document.getElementById('outboundDepartment').value.trim();
     const note = document.getElementById('outboundNote').value.trim();
 
-    if (!quantity || quantity <= 0) {
-        showError('出庫数量を入力してください');
-        return;
-    }
-
-    if (!person) {
-        showError('出庫者名を入力してください');
-        return;
-    }
-
     try {
         const response = await fetch('/api/outbound', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                code: code,
-                quantity: quantity,
-                person: person,
-                department: department,
-                note: note
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code, quantity, person, department, note }),
         });
 
         const data = await response.json();
@@ -328,8 +363,19 @@ async function submitOutbound() {
             document.getElementById('outboundNote').value = '';
             document.getElementById('outboundItemInfo').style.display = 'none';
 
-            // 在庫データを再読み込み
             await loadInventory();
+
+            // 出庫＋注文依頼の場合は注文タブへ遷移して商品をセット
+            if (withOrder) {
+                switchPage('order');
+                setTimeout(() => {
+                    const qrInput = document.getElementById('orderQrCode');
+                    if (qrInput) {
+                        qrInput.value = code;
+                        qrInput.dispatchEvent(new Event('input'));
+                    }
+                }, 300);
+            }
         } else {
             showError(data.error || '出庫に失敗しました');
         }
