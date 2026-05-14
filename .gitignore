@@ -1,6 +1,9 @@
 # SSL証明書（秘密鍵を含むため除外）
 certs/
 
+# Claude Code設定
+.claude/
+
 # Python
 __pycache__/
 *.py[cod]
