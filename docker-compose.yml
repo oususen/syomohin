@@ -18,6 +18,7 @@ services:
       - ./uploads:/app/uploads
       - ./data:/app/data
       - ./static:/app/static
+      - ./templates:/app/templates
       - ./.env:/app/.env:ro
       - ./certs:/app/certs:ro
       - ./docs:/app/docs:ro
