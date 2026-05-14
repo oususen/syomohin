@@ -63,3 +63,51 @@
         <p class="loading">読み込み中...</p>
     </div>
 </div><!-- 在庫一覧ページ終了 -->
+
+<!-- TOPへ戻るボタン -->
+<button id="scrollToTopBtn" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="TOPへ戻る">
+    ▲ TOP
+</button>
+
+<style>
+#scrollToTopBtn {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    z-index: 999;
+    padding: 12px 18px;
+    background: #009688;
+    color: white;
+    border: none;
+    border-radius: 50px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, transform 0.3s;
+    transform: translateY(10px);
+}
+#scrollToTopBtn.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+#scrollToTopBtn:hover {
+    background: #00796B;
+}
+</style>
+
+<script>
+(function () {
+    const btn = document.getElementById('scrollToTopBtn');
+    window.addEventListener('scroll', function () {
+        if (window.scrollY > 300) {
+            btn.classList.add('visible');
+        } else {
+            btn.classList.remove('visible');
+        }
+    });
+})();
+</script>
