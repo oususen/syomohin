@@ -40,6 +40,24 @@ async function initUsersPage() {
 
     // 更新ボタン
     document.getElementById('userUpdateBtn').addEventListener('click', updateUser);
+
+    // 氏名プレビュー（新規登録）
+    function updateFullNamePreview() {
+        const last  = document.getElementById('userLastName').value.trim();
+        const first = document.getElementById('userFirstName').value.trim();
+        document.getElementById('userFullNamePreview').textContent = last ? (first ? `${last}　${first}` : last) : '　';
+    }
+    document.getElementById('userLastName').addEventListener('input', updateFullNamePreview);
+    document.getElementById('userFirstName').addEventListener('input', updateFullNamePreview);
+
+    // 氏名プレビュー（編集モーダル）
+    function updateEditFullNamePreview() {
+        const last  = document.getElementById('editUserLastName').value.trim();
+        const first = document.getElementById('editUserFirstName').value.trim();
+        document.getElementById('editUserFullNamePreview').textContent = last ? (first ? `${last}　${first}` : last) : '　';
+    }
+    document.getElementById('editUserLastName').addEventListener('input', updateEditFullNamePreview);
+    document.getElementById('editUserFirstName').addEventListener('input', updateEditFullNamePreview);
 }
 
 async function loadRoles() {
@@ -136,7 +154,9 @@ function getSelectedRoleIds(containerId) {
 
 async function createUser() {
     const username = document.getElementById('userUsername').value.trim();
-    const fullName = document.getElementById('userFullName').value.trim();
+    const lastName  = document.getElementById('userLastName').value.trim();
+    const firstName = document.getElementById('userFirstName').value.trim();
+    const fullName  = firstName ? `${lastName}　${firstName}` : lastName;
     const email = document.getElementById('userEmail').value.trim();
     const password = document.getElementById('userPassword').value;
     const isActive = document.getElementById('userActive').value === 'active';
@@ -146,8 +166,8 @@ async function createUser() {
     const smtpUser = document.getElementById('userSmtpUser').value.trim();
     const smtpPassword = document.getElementById('userSmtpPassword').value.trim();
 
-    if (!username || !fullName || !password) {
-        showError('ユーザー名、氏名、パスワードは必須です');
+    if (!username || !lastName || !password) {
+        showError('ユーザー名、姓、パスワードは必須です');
         return;
     }
 
@@ -173,6 +193,8 @@ async function createUser() {
             body: JSON.stringify({
                 username,
                 full_name: fullName,
+                last_name: lastName,
+                first_name: firstName,
                 email,
                 password,
                 is_active: isActive,
@@ -190,7 +212,9 @@ async function createUser() {
             showSuccess('ユーザーを登録しました');
             // フォームをクリア
             document.getElementById('userUsername').value = '';
-            document.getElementById('userFullName').value = '';
+            document.getElementById('userLastName').value = '';
+            document.getElementById('userFirstName').value = '';
+            document.getElementById('userFullNamePreview').textContent = '　';
             document.getElementById('userEmail').value = '';
             document.getElementById('userPassword').value = '';
             document.getElementById('userSmtpHost').value = '';
@@ -222,7 +246,9 @@ async function editUser(userId) {
             // フォームに値を設定
             document.getElementById('editUserId').value = user.id;
             document.getElementById('editUserUsername').value = user.username;
-            document.getElementById('editUserFullName').value = user.full_name || '';
+            document.getElementById('editUserLastName').value = user.last_name || '';
+            document.getElementById('editUserFirstName').value = user.first_name || '';
+            document.getElementById('editUserFullNamePreview').textContent = user.full_name || '　';
             document.getElementById('editUserEmail').value = user.email || '';
             document.getElementById('editUserPassword').value = '';
             document.getElementById('editUserActive').value = user.is_active ? 'active' : 'inactive';
@@ -253,8 +279,10 @@ function closeUserEditModal() {
 
 async function updateUser() {
     const userId = document.getElementById('editUserId').value;
-    const username = document.getElementById('editUserUsername').value.trim();
-    const fullName = document.getElementById('editUserFullName').value.trim();
+    const username  = document.getElementById('editUserUsername').value.trim();
+    const lastName  = document.getElementById('editUserLastName').value.trim();
+    const firstName = document.getElementById('editUserFirstName').value.trim();
+    const fullName  = firstName ? `${lastName}　${firstName}` : lastName;
     const email = document.getElementById('editUserEmail').value.trim();
     const password = document.getElementById('editUserPassword').value;
     const isActive = document.getElementById('editUserActive').value === 'active';
@@ -264,8 +292,8 @@ async function updateUser() {
     const smtpUser = document.getElementById('editUserSmtpUser').value.trim();
     const smtpPassword = document.getElementById('editUserSmtpPassword').value.trim();
 
-    if (!username || !fullName) {
-        showError('ユーザー名と氏名は必須です');
+    if (!username || !lastName) {
+        showError('ユーザー名と姓は必須です');
         return;
     }
 
@@ -288,6 +316,8 @@ async function updateUser() {
         const body = {
             username,
             full_name: fullName,
+            last_name: lastName,
+            first_name: firstName,
             email,
             is_active: isActive,
             role_ids: roleIds,

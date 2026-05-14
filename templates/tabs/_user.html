@@ -43,9 +43,19 @@
                     <label for="userUsername">ユーザー名 *</label>
                     <input type="text" id="userUsername" class="input-field" placeholder="例: yamada" required>
                 </div>
+                <div class="filter-group" style="display:flex; gap:8px;">
+                    <div style="flex:1;">
+                        <label for="userLastName">姓 *</label>
+                        <input type="text" id="userLastName" class="input-field" placeholder="山田" required>
+                    </div>
+                    <div style="flex:1;">
+                        <label for="userFirstName">名 *</label>
+                        <input type="text" id="userFirstName" class="input-field" placeholder="太郎" required>
+                    </div>
+                </div>
                 <div class="filter-group">
-                    <label for="userFullName">氏名 *</label>
-                    <input type="text" id="userFullName" class="input-field" placeholder="例: 山田 太郎" required>
+                    <label style="color:#888; font-size:12px;">氏名（自動生成）</label>
+                    <div id="userFullNamePreview" style="padding:8px 12px; background:#f5f5f5; border-radius:4px; font-size:14px; color:#555; min-height:36px;">　</div>
                 </div>
                 <div class="filter-group">
                     <label for="userEmail">メールアドレス</label>
@@ -216,9 +226,19 @@
                     <label for="editUserUsername">ユーザー名 *</label>
                     <input type="text" id="editUserUsername" class="input-field" required>
                 </div>
+                <div class="filter-group" style="display:flex; gap:8px;">
+                    <div style="flex:1;">
+                        <label for="editUserLastName">姓 *</label>
+                        <input type="text" id="editUserLastName" class="input-field" required>
+                    </div>
+                    <div style="flex:1;">
+                        <label for="editUserFirstName">名 *</label>
+                        <input type="text" id="editUserFirstName" class="input-field">
+                    </div>
+                </div>
                 <div class="filter-group">
-                    <label for="editUserFullName">氏名 *</label>
-                    <input type="text" id="editUserFullName" class="input-field" required>
+                    <label style="color:#888; font-size:12px;">氏名（自動生成）</label>
+                    <div id="editUserFullNamePreview" style="padding:8px 12px; background:#f5f5f5; border-radius:4px; font-size:14px; color:#555; min-height:36px;">　</div>
                 </div>
                 <div class="filter-group">
                     <label for="editUserEmail">メールアドレス</label>

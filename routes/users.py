@@ -87,6 +87,8 @@ def get_user(user_id: int):
                 id,
                 username,
                 full_name,
+                last_name,
+                first_name,
                 email,
                 is_active,
                 smtp_host,
@@ -255,6 +257,14 @@ def update_user(user_id: int):
         if "full_name" in data:
             update_fields.append("full_name = :full_name")
             params["full_name"] = (data["full_name"] or "").strip()
+
+        if "last_name" in data:
+            update_fields.append("last_name = :last_name")
+            params["last_name"] = (data["last_name"] or "").strip()
+
+        if "first_name" in data:
+            update_fields.append("first_name = :first_name")
+            params["first_name"] = (data["first_name"] or "").strip()
 
         if "email" in data:
             update_fields.append("email = :email")
