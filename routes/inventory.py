@@ -238,10 +238,10 @@ def get_inventory():
                         ih.consumable_id,
                         ih.inbound_date AS 入庫日,
                         ih.quantity AS 数量,
-                        ih.employee_name AS 入庫者
+                        ih.employee_name AS 入庫者,
+                        ih.inbound_type AS 入庫種別
                     FROM inbound_history ih
                     WHERE ih.consumable_id IN ({placeholders})
-                    AND ih.inbound_type = '注文書'
                     ORDER BY ih.inbound_date DESC
                 """
 
@@ -257,7 +257,8 @@ def get_inventory():
                         inbound_details_dict[consumable_id].append({
                             '入庫日': _to_jst_date(detail['入庫日']),
                             '数量': int(detail['数量']) if pd.notna(detail['数量']) else 0,
-                            '入庫者': str(detail['入庫者']) if pd.notna(detail['入庫者']) else None
+                            '入庫者': str(detail['入庫者']) if pd.notna(detail['入庫者']) else None,
+                            '入庫種別': str(detail['入庫種別']) if pd.notna(detail['入庫種別']) else None
                         })
 
                 # データフレームに入庫詳細を追加

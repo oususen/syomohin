@@ -141,19 +141,20 @@ function renderInventory(items) {
             `;
         }
 
-        // 入庫詳細HTML（商品の注文状態が「入庫済み」の場合のみ表示）
+        // 入庫履歴HTML（入庫記録があれば注文ステータスに関係なく常に表示）
         const inboundDetails = item['入庫詳細'] || [];
         let inboundDetailsHtml = '';
-        if (orderStatus === '入庫済み' && inboundDetails.length > 0) {
+        if (inboundDetails.length > 0) {
             const recentInbounds = inboundDetails.slice(0, 2); // 直近2件のみ
             inboundDetailsHtml = `
                 <div class="order-details-section inbound-details-section">
-                    <div class="order-details-title">📥 入庫詳細（直近${recentInbounds.length}件）</div>
+                    <div class="order-details-title">📥 入庫履歴（直近${recentInbounds.length}件）</div>
                     ${recentInbounds.map(detail => `
                         <div class="order-detail-item">
                             <span>入庫日: ${detail['入庫日'] || '-'}</span>
                             <span>数量: <strong>${detail['数量'] || 0}</strong> ${unit}</span>
                             <span>入庫者: ${detail['入庫者'] || '-'}</span>
+                            ${detail['入庫種別'] ? `<span style="color:#888; font-size:12px;">${detail['入庫種別']}</span>` : ''}
                         </div>
                     `).join('')}
                 </div>
