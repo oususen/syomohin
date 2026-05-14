@@ -255,7 +255,7 @@ def get_inventory():
                         if consumable_id not in inbound_details_dict:
                             inbound_details_dict[consumable_id] = []
                         inbound_details_dict[consumable_id].append({
-                            '入庫日': detail['入庫日'].strftime('%Y-%m-%d') if pd.notna(detail['入庫日']) else None,
+                            '入庫日': _to_jst_date(detail['入庫日']),
                             '数量': int(detail['数量']) if pd.notna(detail['数量']) else 0,
                             '入庫者': str(detail['入庫者']) if pd.notna(detail['入庫者']) else None
                         })
