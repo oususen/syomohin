@@ -111,7 +111,7 @@ function renderInventory(items) {
             const recentPendingOrders = pendingOrders.slice(0, 2); // 直近2件のみ
             pendingOrdersHtml = `
                 <div class="order-details-section">
-                    <div class="order-details-title">📋 注文依頼詳細（直近2件）</div>
+                    <div class="order-details-title">📋 注文依頼詳細（直近${recentPendingOrders.length}件）</div>
                     ${recentPendingOrders.map(order => `
                         <div class="order-detail-item">
                             <span>依頼日: ${order['依頼日'] || '-'}</span>
@@ -129,7 +129,7 @@ function renderInventory(items) {
             const recentOrders = completedOrders.slice(0, 2); // 直近2件のみ
             completedOrdersHtml = `
                 <div class="order-details-section completed-order-section">
-                    <div class="order-details-title">📦 発注詳細（直近2件）</div>
+                    <div class="order-details-title">📦 発注詳細（直近${recentOrders.length}件）</div>
                     ${recentOrders.map(order => `
                         <div class="order-detail-item">
                             <span>注文日: ${order['注文日'] || '-'}</span>
@@ -148,7 +148,7 @@ function renderInventory(items) {
             const recentInbounds = inboundDetails.slice(0, 2); // 直近2件のみ
             inboundDetailsHtml = `
                 <div class="order-details-section inbound-details-section">
-                    <div class="order-details-title">📥 入庫詳細（直近2件）</div>
+                    <div class="order-details-title">📥 入庫詳細（直近${recentInbounds.length}件）</div>
                     ${recentInbounds.map(detail => `
                         <div class="order-detail-item">
                             <span>入庫日: ${detail['入庫日'] || '-'}</span>

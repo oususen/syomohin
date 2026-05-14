@@ -5,6 +5,15 @@ from __future__ import annotations
 
 import base64
 import re
+from datetime import timedelta
+
+JST = timedelta(hours=9)
+
+def _to_jst_date(ts) -> str | None:
+    """UTC datetimeをJST日付文字列(YYYY-MM-DD)に変換"""
+    if not pd.notna(ts):
+        return None
+    return (ts + JST).strftime('%Y-%m-%d')
 
 import cv2
 import numpy as np
@@ -172,11 +181,11 @@ def get_inventory():
                         if consumable_id not in orders_dict:
                             orders_dict[consumable_id] = []
                         orders_dict[consumable_id].append({
-                            '依頼日': order['依頼日'].strftime('%Y-%m-%d') if pd.notna(order['依頼日']) else None,
+                            '依頼日': _to_jst_date(order['依頼日']),
                             '依頼者': str(order['依頼者']) if pd.notna(order['依頼者']) else None,
                             '依頼数量': int(order['依頼数量']) if pd.notna(order['依頼数量']) else 0,
                             '納期': str(order['納期']) if pd.notna(order['納期']) else None,
-                            '注文日': order['注文日'].strftime('%Y-%m-%d') if pd.notna(order['注文日']) else None
+                            '注文日': _to_jst_date(order['注文日'])
                         })
 
                 # データフレームに注文情報を追加
@@ -210,7 +219,7 @@ def get_inventory():
                         if consumable_id not in completed_orders_dict:
                             completed_orders_dict[consumable_id] = []
                         completed_orders_dict[consumable_id].append({
-                            '注文日': order['注文日'].strftime('%Y-%m-%d') if pd.notna(order['注文日']) else None,
+                            '注文日': _to_jst_date(order['注文日']),
                             '注文数量': int(order['注文数量']) if pd.notna(order['注文数量']) else 0,
                             '納期': str(order['納期']) if pd.notna(order['納期']) else None
                         })
